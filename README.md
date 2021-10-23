@@ -132,3 +132,11 @@ budget.generateExcelFile(filename="budget.xlsx")
 ```
 
 There is no limit on the number of accounts and Banks.
+
+### Unit Testing
+
+To run the tests and check the stability of the code, just run:
+
+```shell script
+python -m unittest tests/unit_tests.py
+```
