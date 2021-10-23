@@ -103,7 +103,7 @@ budget.addAccount("Water bill", days=[-200, 0], category="Utilities", frequency=
 
 This means that you pay the water bill each 3 months, the first half of the month, starting in the month 2 (February).
 
-If you have a transaction that only happens once a month, you can use:
+If you have a transaction that only happens once a year, you can use:
 
 ```python
 budget.addSingleAccount("Tax", month=3, days=[1000, 0], category="Taxes", bank="Checking")
