@@ -209,14 +209,16 @@ class BudgetMeTestCase(unittest.TestCase):
         budget.addAccount("Foo", days=[10], category="Credit Card", bank="Foo")
         self.assertEqual(120, budget.getBank("Foo").balance)
 
-    # def test_negative_balance(self):
-    #     budget = Budget(2020)
-    #     budget.addBank("FooBank")
-    #     budget.addAccount("Starting Balance", days=[100], category="Credit Card", bank="FooBank", frequency=12, start=1)
-    #     budget.addAccount("Foo", days=[-20], category="Credit Card", bank="FooBank")
-    #     result= budget.detectNegativeBalance()
-    #     self.assertEqual(4, result['month'])
-    #     self.assertEqual(-4, result['balance'])
+    def test_negative_balance(self):
+        budget = Budget(2020)
+        budget.addBank("FooBank")
+        budget.addAccount("Starting Balance", days=[100], category="Credit Card", bank="FooBank", frequency=12, start=1)
+        budget.addAccount("Foo", days=[-20], category="Credit Card", bank="FooBank")
+        result= budget.detectNegativeBalance()
+        print(result)
+        budget.generateHtmlFile("test.html")
+        self.assertEqual(6, result['month'])
+        self.assertEqual(-20, result['balance'])
 
     def test_transfer_from_account_to_bank(self):
         budget = Budget(2020)

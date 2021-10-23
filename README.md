@@ -30,6 +30,15 @@ Each file will generate an HTML and an Excel file with the budget results.
 
 BaC i basically let you add income and expenses into Python as objects. Then you can generate am HTML and/or Excel file of the actual budget. You can manage banks and categories so you can see where the money is going and how much you will have at the end of each month in a 12 month period.
 
+This is how the concept looks in a year:
+
+| 2021|  1 | 2  | 3  | 4  | 5  | 6  | 7  | 8  | 9  | 10  | 11  | 12  |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+|Payroll| 1000  | 1000  | 1000  | 1000  | 1000  | 1000  | 1000  | 1000  | 1000  |  1000 |  1000 |  1000 |
+|Mortgage| -500  | -500  | -500  | -500  |  -500 | -500  | -500  |  -500 |  -500 |  -500 |  -500 |  -500 |
+|Water utility|   |   | -50  |   |   |  50 |   |   |  50 |   |   | 50  |
+|Bonus|   | 1000  |   |   |   |   |   |   |   |   |   |  |
+
 #### Example
 
 You start creating an instance of the Budget class with the year you are making the budget:
@@ -46,6 +55,12 @@ from BudgetMe.Account import *
 
 budget = Budget(2022,daysof=2)
 ```
+This is how the concept looks in a month:
+| |   |   | 
+|---|---|---|
+|Account| H1  | H2  |
+|Payroll| 1000  |   |
+|Credit card|   | -200  |
 
 The `daysof` means how often one 'Accounts' gets affected each month. For exampe if you get paid twice a month, you need a value of 2. If you get paid 4 times (Weekly), you use 4.
 
@@ -132,6 +147,29 @@ budget.generateExcelFile(filename="budget.xlsx")
 ```
 
 There is no limit on the number of accounts and Banks.
+
+### Utilities
+
+#### Detecting negative balance
+
+You can tell the application to detect when you will have negative balance. This means you end a month with more expensed that income:
+
+```python
+budget.detectNegativeBalance()
+```
+
+The application will return the month you will be negative and for how much in a json format:
+
+```json
+{'month': 6, 'balance': -20.0}
+```
+
+If you don't go negative, the response will be:
+
+```json
+{'month': 0, 'balance': 0}
+```
+
 
 ### Unit Testing
 

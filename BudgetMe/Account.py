@@ -191,6 +191,15 @@ class Budget:
             balance += txn.getFinalBalance()
         return balance
 
+    def detectNegativeBalance(self):
+        result = {"month":0, "balance": 0}
+        for month in range(1,13):
+            balance = self.getRunningBalance(month)
+            if(balance<0):
+                result = {"month":month, "balance": balance}
+                break
+        return result
+
     def getRunningBalance(self, month) -> float:
         """
         Running balance is the balance accumulated until the month specified
