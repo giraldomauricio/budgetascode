@@ -57,6 +57,14 @@ class BudgetMeTestCase(unittest.TestCase):
         self.assertEqual(-200, x.amount)
         self.assertEqual(20, y.amount)
 
+    def test_simplified_account_entry(self):
+        bm = Budget(2021)
+        bm.addAccount("Water", days=[-100], category="Utilities", frequency=3, start=2, bank="Checking",
+                               txn_type=Txntypes.credit(), txn_mode="Required")
+        bm.addAccount("Pest Control", days=[-200], use_last=True)
+        bm.generateHtmlFile("test.html")
+        self.assertEqual(-1200, bm.getFinalBalance())
+
     def test_detect_negative_months(self):
         bm = Account(account="Foo", year=2020)
         bm.days = [10]
