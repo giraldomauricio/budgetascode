@@ -7,6 +7,8 @@ BudgetMe is an approach to BaC (Budget as Code).
 Author: Mauricio Giraldo <mgiraldo@gmail.com> 
 """
 
+# TODO: mark periodicals, savings and expenses individually. Mark required and optionals. Calculate potential savings.
+
 class Account:
     """
     Account is the base of any money movement in a year.
@@ -320,11 +322,11 @@ class Budget:
             html += "\t\t<td  style=\"text-align: right; font-weight: bold\">&nbsp;" + self.formatCurrency(total_balance) + "</td>\n"
         html += "\t</tr>\n"
         html += "<table style=\"font-size: small; font-family: 'Helvetica'; border-collapse: collapse\" border=\"1\" cellpadding=\"5\">\n<br>"
-        html += "<td colspan=\"2\" style=\"text-align: center; font-weight: bold \">Categories</td>\n"
+        html += "<td colspan=\"3\" style=\"text-align: center; font-weight: bold \">Categories</td>\n"
         categories = self.getBalanceByCategories()
         for k,v in categories.items():
             html += "<tr>\n"
-            html += "\t<td>" + k + "</td><td style=\"text-align: right\">" + self.formatCurrency(v) + "</td>\n"
+            html += "\t<td>" + k + "</td><td style=\"text-align: right\">" + self.formatCurrency(v) + "</td><td style=\"text-align: right\">" + self.formatCurrency(v/12) + "/mo</td>\n"
             html += "<tr>\n"
         html += "</table>"
         html += "\t</tr>\n"
@@ -391,13 +393,14 @@ class Budget:
 
         row_counter += 2
         cell = 'A%s' % (row_counter)
-        merge = 'B%s' % (row_counter)
+        merge = 'C%s' % (row_counter)
         worksheet.merge_range("%s:%s" % (cell, merge), "Categories")
         row_counter += 1
         categories = self.getBalanceByCategories()
         for k,v in categories.items():
             worksheet.write("A%s" % row_counter, k)
             worksheet.write("B%s" % row_counter, v)
+            worksheet.write("C%s" % row_counter, v/12)
             row_counter += 1
 
         row_counter += 2
