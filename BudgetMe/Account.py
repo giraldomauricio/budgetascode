@@ -44,18 +44,18 @@ class Account:
         valid_types = ["Debit", "Credit"]
         valid_modes = ["Required", "Optional"]
         if(type(self.year) is not int):
-            raise Exception("Year (%s) must be a number. Is %s" % (self.year, type(self.year)))
+            raise ("Year (%s) must be a number. Is %s" % (self.year, type(self.year)))
         if (type(self.frequency) is not int):
-            raise Exception("Frequency (%s) must be a number. Is %s" % (self.frequency, type(self.frequency)))
+            raise BudgetAccountParametersInvalid("Frequency (%s) must be a number. Is %s" % (self.frequency, type(self.frequency)))
         if (type(self.start) is not int):
-            raise Exception("Start (%s) must be a number. Is %s" % (self.start, type(self.start)))
+            raise BudgetAccountParametersInvalid("Start (%s) must be a number. Is %s" % (self.start, type(self.start)))
         if (not self.txn_type in valid_types):
-            raise Exception("Transaction type must be one of the valid ones (%s)." % valid_types)
+            raise BudgetAccountParametersInvalid("Transaction type must be one of the valid ones (%s)." % valid_types)
         if (not self.txn_mode in valid_modes):
-            raise Exception("Transaction mode must be one of the valid ones (%s)." % valid_modes)
+            raise BudgetAccountParametersInvalid("Transaction mode must be one of the valid ones (%s)." % valid_modes)
         for day in self.days:
             if (type(day) is not float and type(day) is not int):
-                raise Exception("Day (%s) must be a number. Is %s" % (day, type(day)))
+                raise BudgetAccountParametersInvalid("Day (%s) must be a number. Is %s" % (day, type(day)))
         return True
 
     def asdict(self):
@@ -747,3 +747,13 @@ class Txntypes:
     @staticmethod
     def optional() -> str:
         return "Optional"
+
+class BudgetAccountParametersInvalid(Exception):
+
+    """
+    Exception to throw during validation
+    """
+
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
