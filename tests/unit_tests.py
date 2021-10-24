@@ -248,5 +248,15 @@ class BudgetMeTestCase(unittest.TestCase):
         budget.transferFromAccountToBank(from_account="FooAccount", to_bank="Bar")
         self.assertEqual(-120, budget.getBank("Bar").balance)
 
+    def test_calculate_savings(self):
+        budget = Budget(2020)
+        budget.addBank("FooBank")
+        budget.addBank("Bar")
+        budget.addAccount("Required 1", days=[-10], category="Credit Card", bank="FooBank", txn_mode="Required")
+        budget.addAccount("Optional 1", days=[-10], category="Credit Card", bank="FooBank", txn_mode="Optional")
+        budget.addAccount("Optional 2", days=[-10], category="Credit Card", bank="FooBank", txn_mode="Optional")
+        savings = budget.calcualtePotentialSavings()
+        self.assertEqual(-240, savings)
+
 if __name__ == '__main__':
     unittest.main()

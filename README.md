@@ -110,6 +110,12 @@ The last transaction tells that you pay the mortgage ($2,000) only in the first 
 
 The `days` parameter receives an arry with the same number of items you put in `daysof`. If you don't, you will get an error.
 
+A complete details of an account, includes the type (Debit or Credit), the mode (Required, Optional) and if its Periodical (True or False):
+
+```python
+budget.addAccount(account="Netflix", year=2022, category="TV", frequency=1, start=1, bank="Chase", periodical=True, txn_type="Debit", tnx_mode="Optional")
+```
+
 If your accounts gets billed in a frequency different that monthly, and starts in a month different that 1 (January), you can specify the frequency:
 
 ```python
@@ -205,6 +211,8 @@ budget.detectNegativeBalance()
 If you need to adjust the amount of a transaction, lets say you ballpark the value in the budget and the actual value is different for a specific month or months:
 
 ```python
+from BudgetMe.Account import *
+
 budget = Budget(2020)
 budget.addBank("FooBank")
 budget.addAccount("Starting Balance", days=[100], category="Credit Card", bank="FooBank", frequency=12, start=1)
@@ -212,6 +220,22 @@ budget.addAccount("Foo", days=[-20], category="Credit Card", bank="FooBank")
 budget.updateTransaction("Foo",month=3,day=1,amount=-15) # day is the ordinal of the day (1,2...)
 ```
 
+#### Potential savings
+
+BaC can tell you how much potentially you can save, checkig the "Optional" mode in the Accounts transactions:
+
+```python
+from BudgetMe.Account import *
+
+budget = Budget(2020)
+budget.addBank("FooBank")
+budget.addBank("Bar")
+budget.addAccount("Required 1", days=[-10], category="Credit Card", bank="FooBank", txn_mode="Required")
+budget.addAccount("Optional 1", days=[-10], category="Credit Card", bank="FooBank", txn_mode="Optional")
+budget.addAccount("Optional 2", days=[-10], category="Credit Card", bank="FooBank", txn_mode="Optional")
+budget.calcualtePotentialSavings()
+240
+```
 
 ### Unit Testing
 

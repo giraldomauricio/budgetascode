@@ -7,13 +7,18 @@ BudgetMe is an approach to BaC (Budget as Code).
 Author: Mauricio Giraldo <mgiraldo@gmail.com> 
 """
 
-# TODO: mark periodicals, savings and expenses individually. Mark required and optionals. Calculate potential savings.
+
+# TODO: mark periodicals. Mark required and optionals. Calculate potential savings. Add graphs. Classify expenses from credits.
+# TODO: web migration.
+# TODO: iOS migration.
 
 class Account:
     """
     Account is the base of any money movement in a year.
     """
-    def __init__(self, account="", year=None, category="", frequency=1, start=1, bank=None):
+
+    def __init__(self, account="", year=None, category="", frequency=1, start=1, bank=None, periodical=False,
+                 txn_type="Debit", tnx_mode="Required"):
         self.name = account
         if (not year or type(year) != int):
             todays_date = date.today()
@@ -27,6 +32,9 @@ class Account:
         self.frequency = frequency
         self.start = start
         self.bank = bank
+        self.periodical = periodical
+        self.txn_type = txn_type
+        self.txn_mode = tnx_mode
 
     def asdict(self):
         """
@@ -34,36 +42,41 @@ class Account:
         :return:
         dict
         """
-        if(not self.bank):
+        if (not self.bank):
             self.bank = EmptyObject()
         forecast_array = []
         for forecast in self.forecast_array:
             forecast_array.append(forecast.asdict())
-        return {"name": self.name, "year": self.year, "forecast_array": forecast_array, "account": self.account, "days": self.days, "category": self.category, "frequency": self.frequency, "start": self.start, "bank": self.bank.asdict()}
+        return {"name": self.name, "year": self.year, "forecast_array": forecast_array, "account": self.account,
+                "days": self.days, "category": self.category, "frequency": self.frequency, "start": self.start,
+                "bank": self.bank.asdict(), "periodical": self.periodical, "txn_type": self.txn_type, "txn_mode": self.txn_mode}
 
     def init_single_month(self, month):
         self.init(range_start=month, range_end=month)
 
     def init(self, range_start=1, range_end=12):
         frequency_counter = 0
-        for i in range(1,13):
-            if(i>= range_start and i<= range_end):
+        for i in range(1, 13):
+            if (i >= range_start and i <= range_end):
                 if (frequency_counter == self.frequency):
                     frequency_counter = 0
-                if(i>=self.start):
+                if (i >= self.start):
                     frequency_counter += 1
-                if(frequency_counter == 1):
-                    for j in range(1,len(self.days)+1):
-                        self.forecast_array.append(Forecast(month=i, day=j, amount=self.days[j-1], previous=self.getBalancePreviousMont(i)))
-                        if(self.bank):
-                            self.bank.addTransaction(self.days[j-1])
+                if (frequency_counter == 1):
+                    for j in range(1, len(self.days) + 1):
+                        self.forecast_array.append(
+                            Forecast(month=i, day=j, amount=self.days[j - 1], previous=self.getBalancePreviousMont(i)))
+                        if (self.bank):
+                            self.bank.addTransaction(self.days[j - 1])
                     # frequency_counter = 0
                 else:
-                    for j in range(1,len(self.days)+1):
-                        self.forecast_array.append(Forecast(month=i, day=j, amount=0, previous=self.getBalancePreviousMont(i)))
+                    for j in range(1, len(self.days) + 1):
+                        self.forecast_array.append(
+                            Forecast(month=i, day=j, amount=0, previous=self.getBalancePreviousMont(i)))
             else:
                 for j in range(1, len(self.days) + 1):
-                    self.forecast_array.append(Forecast(month=i, day=j, amount=0, previous=self.getBalancePreviousMont(i)))
+                    self.forecast_array.append(
+                        Forecast(month=i, day=j, amount=0, previous=self.getBalancePreviousMont(i)))
 
     def getBalancePreviousMont(self, month):
         balance = 0
@@ -80,7 +93,7 @@ class Account:
 
     def getFinalBalance(self):
         balance = 0
-        for month in range(1,13):
+        for month in range(1, 13):
             balance += self.getMonthBalance(month)
         return balance
 
@@ -93,15 +106,15 @@ class Account:
 
     def getNegativeMonths(self) -> []:
         results = []
-        for i in range(1,13):
+        for i in range(1, 13):
             balance = self.getMonthBalance(i)
-            if(balance < 0):
+            if (balance < 0):
                 results.append({"month": i, "balance": balance})
         return results
 
     def getRunningBalance(self, month):
         balance = 0
-        for days in range(1,month+1):
+        for days in range(1, month + 1):
             balance += self.getMonthBalance(days)
         return balance
 
@@ -137,20 +150,21 @@ class Budget:
             transactions.append(txn.asdict())
         return {"year": self.year, "daysof": self.daysof, "transactions": transactions}
 
-    def addAccount(self, name, days=0, category="", frequency=1, start=1, end=12, bank=""):
-        if(type(days) != list):
+    def addAccount(self, name, days=0, category="", frequency=1, start=1, end=12, bank="", periodical=False, txn_type="Debit", txn_mode="Required"):
+        if (type(days) != list):
             days_array = []
             days_array.append(days)
             days = days_array
-        if(len(days) != self.daysof):
+        if (len(days) != self.daysof):
             raise Exception("All accounts must have the number of days associated during creation.")
         bank_instance = self.getBank(name=bank)
-        account = Account(account=name, year=self.year, category=category, frequency=frequency, start=start, bank=bank_instance)
+        account = Account(account=name, year=self.year, category=category, frequency=frequency, start=start,
+                          bank=bank_instance, periodical=periodical, txn_type=txn_type, tnx_mode=txn_mode)
         account.days = days
         account.init(range_start=start, range_end=end)
         self.transactions.append(account)
 
-    def addSingleAccount(self, name, month, days=[], category="", bank=""):
+    def addSingleAccount(self, name, month, days=[], category="", bank="", periodical=False, txn_type="Debit", txn_mode="Required"):
         if (type(days) != list):
             days_array = []
             days_array.append(days)
@@ -159,7 +173,7 @@ class Budget:
             raise Exception("All accounts must have the number of days associated during creation.")
         bank_instance = self.getBank(name=bank)
         account = Account(account=name, year=self.year, category=category, frequency=1, start=month,
-                          bank=bank_instance)
+                          bank=bank_instance, periodical=periodical, txn_type=txn_type, tnx_mode=txn_mode)
         account.days = days
         account.init_single_month(month)
         self.transactions.append(account)
@@ -171,17 +185,18 @@ class Budget:
         """
         result = []
         for account in self.transactions:
-            if(account.category not in result):
+            if (account.category not in result):
                 result.append(account.category)
         return result
 
     def payOff(self, account, amount, time, start=1, category="", bank=""):
-        monthly_payment = round(amount/time,2)
+        monthly_payment = round(amount / time, 2)
         days = []
         days.append(monthly_payment)
-        for i in range (1,self.daysof):
+        for i in range(1, self.daysof):
             days.append(0)
-        self.addAccount(name=account, days=days, category=category, frequency=1,start=start, end=start+time-1, bank=bank)
+        self.addAccount(name=account, days=days, category=category, frequency=1, start=start, end=start + time - 1,
+                        bank=bank)
 
     def getBalanceByCategories(self) -> dict:
         result = {}
@@ -201,22 +216,30 @@ class Budget:
         return balance
 
     def detectNegativeBalance(self):
-        result = {"month":0, "balance": 0}
-        for month in range(1,13):
+        result = {"month": 0, "balance": 0}
+        for month in range(1, 13):
             balance = self.getRunningBalance(month)
-            if(balance<0):
-                result = {"month":month, "balance": balance}
+            if (balance < 0):
+                result = {"month": month, "balance": balance}
                 break
         return result
 
     def preventNegativeBalance(self, account_name="Negative protection"):
         analysis = self.detectNegativeBalance()
-        self.addAccount(account_name,days=0)
+        self.addAccount(account_name, days=0)
         month_start = analysis['month']
         for month in range(month_start, 13):
             negative_analysis = self.detectNegativeBalance()
             if (negative_analysis['balance'] < 0):
-                self.updateTransaction("Negative protection",month,1,negative_analysis['balance']*-1)
+                self.updateTransaction("Negative protection", month, 1, negative_analysis['balance'] * -1)
+
+    def calcualtePotentialSavings(self) -> float:
+        optional_accounts = [d for d in self.transactions if d.txn_mode == "Optional"]
+        savings = 0
+        for optional in optional_accounts:
+            for txn in optional.forecast_array:
+                savings += txn.amount
+        return savings
 
     def getRunningBalance(self, month) -> float:
         """
@@ -242,14 +265,14 @@ class Budget:
             balance += transaction.getFinalBalance()
         return balance
 
-    def getAccount(self, account_name)->Account:
+    def getAccount(self, account_name) -> Account:
         return [d for d in self.transactions if d.name == account_name][0]
 
     def getMonthName(self, month_number):
-        months = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"]
-        if(month_number < 1 or month_number > 12):
+        months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
+        if (month_number < 1 or month_number > 12):
             raise Exception("Month must be between 1 and 12.")
-        return months[month_number-1]
+        return months[month_number - 1]
 
     def updateTransaction(self, account_name, month, day, amount):
         self.getAccount(account_name=account_name).setActual(month, day, amount)
@@ -262,8 +285,10 @@ class Budget:
         # Months Columns Headers
         html += "\t<tr style=\"background-color: cornflowerblue; color: aliceblue\">\n"
         html += "\t\t<td style=\"text-align: center; font-weight: bold\">" + str(self.year) + "</td>\n"
-        for month in range(1,13):
-            html += "\t\t<td colspan=\"" + str(self.daysof) + "\" style=\"text-align: center; font-weight: bold\">" + str(self.getMonthName(month)) + "</td>\n"
+        for month in range(1, 13):
+            html += "\t\t<td colspan=\"" + str(
+                self.daysof) + "\" style=\"text-align: center; font-weight: bold\">" + str(
+                self.getMonthName(month)) + "</td>\n"
         html += "\t\t<td>&nbsp;</td>\n"
         html += "\t</tr>\n"
         # Days labels columns headers
@@ -277,19 +302,22 @@ class Budget:
         for row in self.transactions:
             html += "\t<tr>\n"
             html += "\t\t<td>" + row.name + "</td>\n"
-            for month in range(1,13):
+            for month in range(1, 13):
                 for day in row.getMonth(month):
-                    if(day.amount > 0):
+                    if (day.amount > 0):
                         html += "\t\t<td style=\"text-align: right\">" + self.formatCurrency(day.amount) + "</td>\n"
-                    elif(day.amount == 0):
+                    elif (day.amount == 0):
                         html += "\t\t<td style=\"text-align: right; color: red\">&nbsp;</td>\n"
                     else:
-                        html += "\t\t<td style=\"text-align: right; color: red\">" + self.formatCurrency(day.amount) + "</td>\n"
+                        html += "\t\t<td style=\"text-align: right; color: red\">" + self.formatCurrency(
+                            day.amount) + "</td>\n"
             final_balance = row.getFinalBalance()
-            if(final_balance < 0):
-                html += "\t\t<td style=\"text-align: right; color: red; font-weight: bold\">" + self.formatCurrency(row.getFinalBalance()) + "</td>\n"
+            if (final_balance < 0):
+                html += "\t\t<td style=\"text-align: right; color: red; font-weight: bold\">" + self.formatCurrency(
+                    row.getFinalBalance()) + "</td>\n"
             else:
-                html += "\t\t<td style=\"text-align: right; font-weight: bold\">" + self.formatCurrency(row.getFinalBalance()) + "</td>\n"
+                html += "\t\t<td style=\"text-align: right; font-weight: bold\">" + self.formatCurrency(
+                    row.getFinalBalance()) + "</td>\n"
             html += "\t</tr>\n"
         # Monthly Balance
         html += "\t<tr style=\"background-color: aliceblue\">\n"
@@ -312,21 +340,28 @@ class Budget:
         for month in range(1, 13):
             running_balance = self.getRunningBalance(month)
             if (running_balance > 0):
-                html += "\t\t<td colspan=\"" + str(self.daysof) + "\" style=\"text-align: center; weight: bold\">" +  self.formatCurrency(running_balance) + "</td>\n"
+                html += "\t\t<td colspan=\"" + str(
+                    self.daysof) + "\" style=\"text-align: center; weight: bold\">" + self.formatCurrency(
+                    running_balance) + "</td>\n"
             else:
-                html += "\t\t<td colspan=\"" + str(self.daysof) + "\" style=\"text-align: center; weight: bold; color: red\">" +  self.formatCurrency(running_balance) + "</td>\n"
+                html += "\t\t<td colspan=\"" + str(
+                    self.daysof) + "\" style=\"text-align: center; weight: bold; color: red\">" + self.formatCurrency(
+                    running_balance) + "</td>\n"
         total_balance = self.getFinalBalance()
-        if(total_balance < 0):
-            html += "\t\t<td  style=\"text-align: right; font-weight: bold; color: red\">&nbsp;" + self.formatCurrency(total_balance) + "</td>\n"
+        if (total_balance < 0):
+            html += "\t\t<td  style=\"text-align: right; font-weight: bold; color: red\">&nbsp;" + self.formatCurrency(
+                total_balance) + "</td>\n"
         else:
-            html += "\t\t<td  style=\"text-align: right; font-weight: bold\">&nbsp;" + self.formatCurrency(total_balance) + "</td>\n"
+            html += "\t\t<td  style=\"text-align: right; font-weight: bold\">&nbsp;" + self.formatCurrency(
+                total_balance) + "</td>\n"
         html += "\t</tr>\n"
         html += "<table style=\"font-size: small; font-family: 'Helvetica'; border-collapse: collapse\" border=\"1\" cellpadding=\"5\">\n<br>"
         html += "<td colspan=\"3\" style=\"text-align: center; font-weight: bold \">Categories</td>\n"
         categories = self.getBalanceByCategories()
-        for k,v in categories.items():
+        for k, v in categories.items():
             html += "<tr>\n"
-            html += "\t<td>" + k + "</td><td style=\"text-align: right\">" + self.formatCurrency(v) + "</td><td style=\"text-align: right\">" + self.formatCurrency(v/12) + "/mo</td>\n"
+            html += "\t<td>" + k + "</td><td style=\"text-align: right\">" + self.formatCurrency(
+                v) + "</td><td style=\"text-align: right\">" + self.formatCurrency(v / 12) + "/mo</td>\n"
             html += "<tr>\n"
         html += "</table>"
         html += "\t</tr>\n"
@@ -334,7 +369,8 @@ class Budget:
         html += "<td colspan=\"2\" style=\"text-align: center; font-weight: bold \">Banks</td>\n"
         for bank in self.banks:
             html += "<tr>\n"
-            html += "\t<td>" + bank.name + "</td><td style=\"text-align: right\">" + self.formatCurrency(bank.balance) + "</td>\n"
+            html += "\t<td>" + bank.name + "</td><td style=\"text-align: right\">" + self.formatCurrency(
+                bank.balance) + "</td>\n"
             html += "<tr>\n"
         html += "</table>"
         body = "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\">\n<title>Report</title>\n</head>\n<body>\n" + html + "\n</body>\n</html>"
@@ -346,12 +382,12 @@ class Budget:
         worksheet.set_column('A:A', 20)
         worksheet.write('A1', self.year)
         month = 0
-        for column in range(1,25,2):
+        for column in range(1, 25, 2):
             month += 1
             col = 65 + column
             cell = '%s1' % chr(col)
-            merge = '%s1' % chr(col+1)
-            worksheet.merge_range("%s:%s" % (cell,merge), str(self.getMonthName(month)))
+            merge = '%s1' % chr(col + 1)
+            worksheet.merge_range("%s:%s" % (cell, merge), str(self.getMonthName(month)))
         for month in range(1, 25):
             for label in self.days_labels:
                 col = 65 + month
@@ -373,12 +409,12 @@ class Budget:
         row_counter += 1
         worksheet.write("A%s" % row_counter, "Monthly balance")
         month = 0
-        for column in range(1,25,2):
+        for column in range(1, 25, 2):
             month += 1
             col = 65 + column
-            cell = '%s%s' % (chr(col),row_counter)
-            merge = '%s%s' % (chr(col+1),row_counter)
-            worksheet.merge_range("%s:%s" % (cell,merge), str(self.getMonthBalance(month)))
+            cell = '%s%s' % (chr(col), row_counter)
+            merge = '%s%s' % (chr(col + 1), row_counter)
+            worksheet.merge_range("%s:%s" % (cell, merge), str(self.getMonthBalance(month)))
         row_counter += 1
         worksheet.write("A%s" % row_counter, "Running balance")
         month = 0
@@ -397,10 +433,10 @@ class Budget:
         worksheet.merge_range("%s:%s" % (cell, merge), "Categories")
         row_counter += 1
         categories = self.getBalanceByCategories()
-        for k,v in categories.items():
+        for k, v in categories.items():
             worksheet.write("A%s" % row_counter, k)
             worksheet.write("B%s" % row_counter, v)
-            worksheet.write("C%s" % row_counter, v/12)
+            worksheet.write("C%s" % row_counter, v / 12)
             row_counter += 1
 
         row_counter += 2
@@ -426,9 +462,10 @@ class Budget:
 
     def getBank(self, name):
         try:
-            return  [d for d in self.banks if d.name == name][0]
+            return [d for d in self.banks if d.name == name][0]
         except:
             return None
+
 
 class Bank:
 
@@ -442,6 +479,17 @@ class Bank:
     def asdict(self):
         return {"name": self.name, "balance": self.balance}
 
+
 class EmptyObject:
     def asdict(self):
         return {}
+
+class Txntypes:
+
+    @staticmethod
+    def debit() -> str:
+        return "Debit"
+
+    @staticmethod
+    def credit() -> str:
+        return "Credit"
