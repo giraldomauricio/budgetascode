@@ -15,6 +15,8 @@ class BudgetMeTestCase(unittest.TestCase):
         bm_3 = Account(year="foo")
         self.assertNotEqual("foo", bm_3.year)
         self.assertEqual(year, bm_3.year)
+        bm_4 = Account(year="Cat")
+        self.assertEqual(year, bm_4.year)
 
     def test_init_budget(self):
         bm = Account(account="Foo", year=2020)
@@ -28,11 +30,29 @@ class BudgetMeTestCase(unittest.TestCase):
         self.assertEqual(2, bm.forecast_array[2].month)
         self.assertEqual(2, bm.forecast_array[3].month)
 
+    def test_init_budget_wrong(self):
+        bm = Account(account="Foo", year=2020)
+        bm.days = ["Foo", 20]
+        try:
+            bm.init()
+            self.assertTrue(False)
+        except:
+            self.assertTrue(True)
+
     def test_init_budget_that_runs_for_specific_range(self):
         bm = Account(account="Foo", year=2020)
         bm.days = [0, -10]
         bm.init(range_start=1, range_end=3)
         self.assertEqual(-30, bm.getFinalBalance())
+
+    def test_init_budget_that_runs_for_specific_range_wrong(self):
+        bm = Account(account="Foo", year=2020)
+        bm.days = [0, -10]
+        try:
+            bm.init(range_start=4, range_end=3)
+            self.assertTrue(False)
+        except:
+            self.assertTrue(True)
 
     def test_init_budget_that_runs_for_single_day(self):
         bm = Account(account="Foo", year=2020)
@@ -121,8 +141,11 @@ class BudgetMeTestCase(unittest.TestCase):
 
     def test_add_account_with_single_transaction(self):
         budget = Budget(2020, daysof=2)
-        budget.addSingleAccount("Foo", month=3, days=[10,20])
-        self.assertEqual(30, budget.getFinalBalance())
+        try:
+            budget.addSingleAccount("Foo", month=3, days=[10,20])
+            self.assertTrue(False)
+        except:
+            self.assertTrue(True)
 
     def test_all_transactions_have_the_same_days(self):
         budget = Budget(2020, daysof=2)

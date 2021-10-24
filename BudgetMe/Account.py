@@ -36,6 +36,28 @@ class Account:
         self.txn_type = txn_type
         self.txn_mode = tnx_mode
 
+    def validate(self) -> bool:
+        """
+        Validates if all the input values for an Account are valid.
+        :return: True if the values are valid, False if not.
+        """
+        valid_types = ["Debit", "Credit"]
+        valid_modes = ["Required", "Optional"]
+        if(type(self.year) is not int):
+            raise Exception("Year (%s) must be a number. Is %s" % (self.year, type(self.year)))
+        if (type(self.frequency) is not int):
+            raise Exception("Frequency (%s) must be a number. Is %s" % (self.frequency, type(self.frequency)))
+        if (type(self.start) is not int):
+            raise Exception("Start (%s) must be a number. Is %s" % (self.start, type(self.start)))
+        if (not self.txn_type in valid_types):
+            raise Exception("Transaction type must be one of the valid ones (%s)." % valid_types)
+        if (not self.txn_mode in valid_modes):
+            raise Exception("Transaction mode must be one of the valid ones (%s)." % valid_modes)
+        for day in self.days:
+            if (type(day) is not float and type(day) is not int):
+                raise Exception("Day (%s) must be a number. Is %s" % (day, type(day)))
+        return True
+
     def asdict(self):
         """
         Converts the object variables into a dictionary
@@ -61,6 +83,9 @@ class Account:
         :param range_end: Month where the transactions end.
         :return: None
         """
+        self.validate()
+        if(range_start>range_end or range_end<1 or range_end>12):
+            raise Exception("The range is incorrect.")
         frequency_counter = 0
         for i in range(1, 13):
             if (i >= range_start and i <= range_end):
