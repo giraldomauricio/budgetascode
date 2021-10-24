@@ -215,10 +215,30 @@ class BudgetMeTestCase(unittest.TestCase):
         budget.addAccount("Starting Balance", days=[100], category="Credit Card", bank="FooBank", frequency=12, start=1)
         budget.addAccount("Foo", days=[-20], category="Credit Card", bank="FooBank")
         result= budget.detectNegativeBalance()
-        print(result)
-        budget.generateHtmlFile("test.html")
         self.assertEqual(6, result['month'])
         self.assertEqual(-20, result['balance'])
+
+    def test_plan_payoff(self):
+        budget = Budget(2020)
+        budget.addBank("FooBank")
+        budget.payOff("Bar", amount=100, time=3, start=2, bank="FooBank")
+        payoff = budget.getAccount("Bar")
+        payments_recorded = [d for d in payoff.forecast_array if d.amount > 0]
+        self.assertEqual(3, len(payments_recorded))
+
+    def test_negative_prevention(self):
+        budget = Budget(2020)
+        budget.addBank("FooBank")
+        budget.addAccount("Starting Balance", days=[100], category="Credit Card", bank="FooBank", frequency=12, start=1)
+        budget.addAccount("Foo", days=[-20], category="Credit Card", bank="FooBank")
+        result = budget.detectNegativeBalance()
+        self.assertEqual(6, result['month'])
+        self.assertEqual(-20, result['balance'])
+        budget.preventNegativeBalance()
+        result2 = budget.detectNegativeBalance()
+        budget.generateHtmlFile("test.html")
+        self.assertEqual(0, result2['month'])
+        self.assertEqual(0, result2['balance'])
 
     def test_transfer_from_account_to_bank(self):
         budget = Budget(2020)

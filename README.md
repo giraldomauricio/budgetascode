@@ -170,6 +170,48 @@ If you don't go negative, the response will be:
 {'month': 0, 'balance': 0}
 ```
 
+#### Payoff
+
+Payoff helps to set the payoff of any amount in a period of time starting on a specific month. Basically creates an account that is divided by the amount of the payment in the range specified.
+
+```python
+from BudgetMe.Account import *
+
+budget = Budget(2020)
+budget.addBank("FooBank")
+budget.payOff("Bar", amount=100, time=3, start=2, bank="FooBank")
+```
+
+#### Negative balance protection
+
+You can ask the application to determine what transactions to add in order to prevent landing in a balance of zero in the entire budget:
+
+```python
+from BudgetMe.Account import *
+
+budget = Budget(2020)
+budget.addBank("FooBank")
+budget.addAccount("Starting Balance", days=[100], category="Credit Card", bank="FooBank", frequency=12, start=1)
+budget.addAccount("Foo", days=[-20], category="Credit Card", bank="FooBank")
+budget.detectNegativeBalance()
+{'month': 6, 'balance': -20.0}
+budget.preventNegativeBalance()
+budget.detectNegativeBalance()
+{'month': 0, 'balance': 0}
+```
+
+#### Account conciliation
+
+If you need to adjust the amount of a transaction, lets say you ballpark the value in the budget and the actual value is different for a specific month or months:
+
+```python
+budget = Budget(2020)
+budget.addBank("FooBank")
+budget.addAccount("Starting Balance", days=[100], category="Credit Card", bank="FooBank", frequency=12, start=1)
+budget.addAccount("Foo", days=[-20], category="Credit Card", bank="FooBank")
+budget.updateTransaction("Foo",month=3,day=1,amount=-15) # day is the ordinal of the day (1,2...)
+```
+
 
 ### Unit Testing
 

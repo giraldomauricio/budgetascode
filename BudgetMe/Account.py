@@ -3,7 +3,7 @@ from datetime import date
 import xlsxwriter
 
 """
-BudgetMe is an approach to BaaC (Budget as a Code).
+BudgetMe is an approach to BaC (Budget as Code).
 Author: Mauricio Giraldo <mgiraldo@gmail.com> 
 """
 
@@ -32,6 +32,8 @@ class Account:
         :return:
         dict
         """
+        if(not self.bank):
+            self.bank = EmptyObject()
         forecast_array = []
         for forecast in self.forecast_array:
             forecast_array.append(forecast.asdict())
@@ -72,9 +74,6 @@ class Account:
         return [d for d in self.forecast_array if d.month == month]
 
     def setActual(self, month, day, amount):
-        array_start = (month - 1) * 2
-        if (day == 2):
-            array_start += 1
         [c for c in [d for d in self.forecast_array if d.month == month] if c.day == day][0].amount = amount
 
     def getFinalBalance(self):
@@ -136,7 +135,7 @@ class Budget:
             transactions.append(txn.asdict())
         return {"year": self.year, "daysof": self.daysof, "transactions": transactions}
 
-    def addAccount(self, name, days=0, category="", frequency=1, start=1, bank=""):
+    def addAccount(self, name, days=0, category="", frequency=1, start=1, end=12, bank=""):
         if(type(days) != list):
             days_array = []
             days_array.append(days)
@@ -146,7 +145,7 @@ class Budget:
         bank_instance = self.getBank(name=bank)
         account = Account(account=name, year=self.year, category=category, frequency=frequency, start=start, bank=bank_instance)
         account.days = days
-        account.init()
+        account.init(range_start=start, range_end=end)
         self.transactions.append(account)
 
     def addSingleAccount(self, name, month, days=[], category="", bank=""):
@@ -174,6 +173,14 @@ class Budget:
                 result.append(account.category)
         return result
 
+    def payOff(self, account, amount, time, start=1, category="", bank=""):
+        monthly_payment = round(amount/time,2)
+        days = []
+        days.append(monthly_payment)
+        for i in range (1,self.daysof):
+            days.append(0)
+        self.addAccount(name=account, days=days, category=category, frequency=1,start=start, end=start+time-1, bank=bank)
+
     def getBalanceByCategories(self) -> dict:
         result = {}
         categories = self.getCategories()
@@ -199,6 +206,15 @@ class Budget:
                 result = {"month":month, "balance": balance}
                 break
         return result
+
+    def preventNegativeBalance(self, account_name="Negative protection"):
+        analysis = self.detectNegativeBalance()
+        self.addAccount(account_name,days=0)
+        month_start = analysis['month']
+        for month in range(month_start, 13):
+            negative_analysis = self.detectNegativeBalance()
+            if (negative_analysis['balance'] < 0):
+                self.updateTransaction("Negative protection",month,1,negative_analysis['balance']*-1)
 
     def getRunningBalance(self, month) -> float:
         """
@@ -422,3 +438,7 @@ class Bank:
 
     def asdict(self):
         return {"name": self.name, "balance": self.balance}
+
+class EmptyObject:
+    def asdict(self):
+        return {}
