@@ -1,7 +1,7 @@
 from datetime import date
 
 import xlsxwriter
-
+import uuid
 """
 BudgetMe is an approach to BaC (Budget as Code).
 Author: Mauricio Giraldo <mgiraldo@gmail.com> 
@@ -12,13 +12,44 @@ Author: Mauricio Giraldo <mgiraldo@gmail.com>
 # TODO: web migration.
 # TODO: iOS migration.
 
+class Forecast:
+    """
+    Forecast is a transaction for an account.
+    """
+
+    def __init__(self, month, day, amount, previous=0):
+        self.id = str(uuid.uuid3(uuid.NAMESPACE_DNS, 'bac'))
+        self.month = month
+        self.day = day
+        self.amount = amount
+        self.planned = amount
+        self.previous = previous  # Balance transfer from previous month
+
+    def asdict(self):
+        return {"id": self.id, "month": self.month, "day": self.day, "amount": self.amount, "planned": self.planned, "previous": self.previous}
+
+class Bank(object):
+    """
+    Basic bank object.
+    """
+    def __init__(self, name, initial_balance=0):
+        self.name = name
+        self.balance = initial_balance
+        self.transactions = []
+
+    def addTransaction(self, txn:Forecast):
+        self.balance += txn.amount
+        self.transactions.append({"id": txn.id, "amount": txn.amount})
+
+    def asdict(self):
+        return {"name": self.name, "balance": self.balance, "transactions": self.transactions}
+
 class Account:
     """
     Account is the base of any money movement in a year.
     """
 
-    def __init__(self, account="", year=None, category="", frequency=1, start=1, bank=None, periodical=False,
-                 txn_type="Debit", tnx_mode="Required"):
+    def __init__(self, account="", year=None, category="", frequency=1, start=1, bank=None, periodical=False, txn_mode="Required"):
         self.name = account
         if (not year or type(year) != int):
             todays_date = date.today()
@@ -33,8 +64,7 @@ class Account:
         self.start = start
         self.bank = bank
         self.periodical = periodical
-        self.txn_type = txn_type
-        self.txn_mode = tnx_mode
+        self.txn_mode = txn_mode
 
     def validate(self) -> bool:
         """
@@ -49,8 +79,6 @@ class Account:
             raise BudgetAccountParametersInvalid("Frequency (%s) must be a number. Is %s" % (self.frequency, type(self.frequency)))
         if (type(self.start) is not int):
             raise BudgetAccountParametersInvalid("Start (%s) must be a number. Is %s" % (self.start, type(self.start)))
-        if (not self.txn_type in valid_types):
-            raise BudgetAccountParametersInvalid("Transaction type must be one of the valid ones (%s)." % valid_types)
         if (not self.txn_mode in valid_modes):
             raise BudgetAccountParametersInvalid("Transaction mode must be one of the valid ones (%s)." % valid_modes)
         for day in self.days:
@@ -71,7 +99,7 @@ class Account:
             forecast_array.append(forecast.asdict())
         return {"name": self.name, "year": self.year, "forecast_array": forecast_array, "account": self.account,
                 "days": self.days, "category": self.category, "frequency": self.frequency, "start": self.start,
-                "bank": self.bank.asdict(), "periodical": self.periodical, "txn_type": self.txn_type, "txn_mode": self.txn_mode}
+                "bank": self.bank.asdict(), "periodical": self.periodical, "txn_mode": self.txn_mode}
 
     def init_single_month(self, month):
         self.init(range_start=month, range_end=month)
@@ -95,19 +123,19 @@ class Account:
                     frequency_counter += 1
                 if (frequency_counter == 1):
                     for j in range(1, len(self.days) + 1):
-                        self.forecast_array.append(
-                            Forecast(month=i, day=j, amount=self.days[j - 1], previous=self.getBalancePreviousMont(i)))
+                        forecast = Forecast(month=i, day=j, amount=self.days[j - 1], previous=self.getBalancePreviousMont(i))
+                        self.forecast_array.append(forecast)
                         if (self.bank):
-                            self.bank.addTransaction(self.days[j - 1])
+                            self.bank.addTransaction(forecast)
                     # frequency_counter = 0
                 else:
                     for j in range(1, len(self.days) + 1):
-                        self.forecast_array.append(
-                            Forecast(month=i, day=j, amount=0, previous=self.getBalancePreviousMont(i)))
+                        forecast = Forecast(month=i, day=j, amount=0, previous=self.getBalancePreviousMont(i))
+                        self.forecast_array.append(forecast)
             else:
                 for j in range(1, len(self.days) + 1):
-                    self.forecast_array.append(
-                        Forecast(month=i, day=j, amount=0, previous=self.getBalancePreviousMont(i)))
+                    forecast = Forecast(month=i, day=j, amount=0, previous=self.getBalancePreviousMont(i))
+                    self.forecast_array.append(forecast)
 
     def getBalancePreviousMont(self, month) -> float:
         """
@@ -129,15 +157,26 @@ class Account:
         """
         return [d for d in self.forecast_array if d.month == month]
 
-    def setActual(self, month, day, amount):
+    def setAmount(self, month, day, amount):
         """
-        Updates the value of a transaction of an account on a specified month nad day.
+        Updates the value of a transaction of an account on a specified month and day.
         :param month: month of the transaction.
         :param day: ordinal day of the transaction, not the actual day in the calendar
         :param amount: Account name
         :return: None
         """
         [c for c in [d for d in self.forecast_array if d.month == month] if c.day == day][0].amount = amount
+
+    def setActualValue(self, month, day, amount):
+        """
+        Updates the actual value of a transaction of an account on a specified month and day.
+        Actual value vs. amount will show the actual budget vs real values.
+        :param month: month of the transaction.
+        :param day: ordinal day of the transaction, not the actual day in the calendar
+        :param amount: Account name
+        :return: None
+        """
+        [c for c in [d for d in self.forecast_array if d.month == month] if c.day == day][0].actual_amount = amount
 
     def getFinalBalance(self) -> float:
         """
@@ -184,22 +223,6 @@ class Account:
             balance += self.getMonthBalance(days)
         return balance
 
-
-class Forecast:
-    """
-    Forecast is a transaction for an account.
-    """
-
-    def __init__(self, month, day, amount, previous=0):
-        self.month = month
-        self.day = day
-        self.amount = amount
-        self.previous = previous  # Balance transfer from previous month
-
-    def asdict(self):
-        return {"month": self.month, "day": self.day, "amount": self.amount, "previous": self.previous}
-
-
 class Budget:
     """
     Budget is the mayor object of the application.
@@ -226,7 +249,7 @@ class Budget:
             banks.append(bank.asdict())
         return {"year": self.year, "daysof": self.daysof, "transactions": transactions, "banks": banks, "days_labels": self.days_labels, "template": self.template}
 
-    def addAccount(self, name, days=0, category="", frequency=1, start=1, end=12, bank="", periodical=False, txn_type="Debit", txn_mode="Required", use_last=False) -> Account:
+    def addAccount(self, name, days=0, category="", frequency=1, start=1, end=12, bank="", periodical=False, txn_mode="Required", use_last=False) -> Account:
         """
         Adds an account to the Budget
         :param name: Name of the account.
@@ -249,7 +272,6 @@ class Budget:
             end = self.template['end']
             bank = self.template['bank']
             periodical = self.template['periodical']
-            txn_type = self.template['txn_type']
             txn_mode = self.template['txn_mode']
         if (type(days) != list):
             days_array = []
@@ -259,7 +281,7 @@ class Budget:
             raise Exception("All accounts must have the number of days associated during creation.")
         bank_instance = self.getBank(name=bank)
         account = Account(account=name, year=self.year, category=category, frequency=frequency, start=start,
-                          bank=bank_instance, periodical=periodical, txn_type=txn_type, tnx_mode=txn_mode)
+                          bank=bank_instance, periodical=periodical, txn_mode=txn_mode)
         account.days = days
         account.init(range_start=start, range_end=end)
         self.transactions.append(account)
@@ -267,7 +289,7 @@ class Budget:
         self.template['end'] = end
         return account
 
-    def addSingleAccount(self, name, month, days=[], category="", bank="", periodical=False, txn_type="Debit", txn_mode="Required", use_last=False) -> Account:
+    def addSingleAccount(self, name, month, days=[], category="", bank="", periodical=False, txn_mode="Required", use_last=False) -> Account:
         """
         Creates an account that only has one single transaction in the entire year.
         :param name: Name of the account.
@@ -285,7 +307,6 @@ class Budget:
             category = self.template['category']
             bank = self.template['bank']
             periodical = self.template['periodical']
-            txn_type = self.template['txn_type']
             txn_mode = self.template['txn_mode']
         if (type(days) != list):
             days_array = []
@@ -295,7 +316,7 @@ class Budget:
             raise Exception("All accounts must have the number of days associated during creation.")
         bank_instance = self.getBank(name=bank)
         account = Account(account=name, year=self.year, category=category, frequency=1, start=month,
-                          bank=bank_instance, periodical=periodical, txn_type=txn_type, tnx_mode=txn_mode)
+                          bank=bank_instance, periodical=periodical, txn_mode=txn_mode)
         account.days = days
         account.init_single_month(month)
         self.transactions.append(account)
@@ -414,6 +435,19 @@ class Budget:
             balance += account.getMonthBalance(month)
         return balance
 
+    def getVarianceForMonth(self, account:str, month:int) -> float:
+        """
+        Gets the deviation (Forecasted vs Actual) of the month.
+        :param month: the month number (1-12)
+        :return: The actual deviation
+        """
+        transactions = self.getAccount(account_name=account).getMonth(month=month)
+        dev = 0
+        for txn in transactions:
+            dev += txn.amount - txn.planned
+        return dev
+
+
     def getTotalBalanceByCategory(self, category) -> float:
         """
         Returns the total balance for a Category by the end of the year.
@@ -454,7 +488,7 @@ class Budget:
         :param amount: Amount to update.
         :return: None
         """
-        self.getAccount(account_name=account_name).setActual(month, day, amount)
+        self.getAccount(account_name=account_name).setAmount(month, day, amount)
 
     def formatCurrency(self, number) -> str:
         """
@@ -689,7 +723,8 @@ class Budget:
         :param to_bank: Name of the bank.
         :return: None
         """
-        self.getBank(to_bank).addTransaction(-1 * self.getAccount(from_account).getFinalBalance())
+        txn = Forecast(1,1,-1 * self.getAccount(from_account).getFinalBalance())
+        self.getBank(to_bank).addTransaction(txn)
 
     def addBank(self, name):
         """
@@ -699,7 +734,7 @@ class Budget:
         """
         self.banks.append(Bank(name=name))
 
-    def getBank(self, name):
+    def getBank(self, name) -> Bank:
         """
         Retrieves a bank
         :param name: Bank name
@@ -710,21 +745,52 @@ class Budget:
         except:
             return None
 
+    @staticmethod
+    def createForecastFromJson(forecast_json:dict) -> Forecast:
+        """
+        Creates a new Forecast object from a Forecast Dictionary.
+        :param forecast_json: The json representation of the Forecast
+        :return:
+        """
+        return Forecast(month=forecast_json['month'], day=forecast_json['day'], amount=forecast_json['amount'], previous=forecast_json['previous'])
 
-class Bank:
-    """
-    Basic bank object.
-    """
-    def __init__(self, name, initial_balance=0):
-        self.name = name
-        self.balance = initial_balance
+    @staticmethod
+    def createBankFromJson(bank_json:dict) -> Bank:
+        """
+        Creates a new Bank object from a Bank Dictionary.
+        :param bank_json: The json representation of the Bank
+        :return:
+        """
+        bank = Bank(name=bank_json['name'], initial_balance=bank_json['balance'])
+        for txn in bank_json['transactions']:
+            bank.transactions.append(txn)
+        return bank
 
-    def addTransaction(self, amount):
-        self.balance += amount
+    @staticmethod
+    def createAccountFromJson(account_json:dict) -> Account:
+        """
+        Creates a new Account object from an Account Dictionary.
+        :param account_json: The json representation of the Account
+        :return:
+        """
+        bank = Budget.createBankFromJson(account_json['bank'])
+        account = Account(account_json['account'],year=account_json['year'],category=account_json['category'], frequency=account_json['frequency'], start=account_json['start'], bank=bank, periodical=account_json['periodical'], txn_mode=account_json['txn_mode'])
+        for forecast in account_json['forecast_array']:
+            account.forecast_array.append(Budget.createForecastFromJson(forecast))
+        return account
 
-    def asdict(self):
-        return {"name": self.name, "balance": self.balance}
-
+    @staticmethod
+    def createBudgetFromJson(budget_json):
+        """
+        Creates a new Budget object from an Budget Dictionary.
+        :param account_json: The json representation of the Budget
+        :return: Budget
+        """
+        budget = Budget(budget_json['year'], daysof=budget_json['daysof'])
+        budget.days_labels = budget_json['days_labels']
+        for account in budget_json['transactions']:
+            budget.transactions.append(Budget.createAccountFromJson(account))
+        return budget
 
 class EmptyObject:
     def asdict(self):

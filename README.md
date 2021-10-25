@@ -237,6 +237,25 @@ budget.calcualtePotentialSavings()
 240
 ```
 
+### Serialization
+
+BaC allows serialization and deserialization. This means that the objects can become JSON and JSON can be converted back to objects:
+
+```python
+from BudgetMe.Account import *
+# Convert a json into an Object
+budget_json = {'year': 2021, 'daysof':'dayso ... '}
+budget = Budget.createBudgetFromJson(budget_json)
+```
+
+```python
+from BudgetMe.Account import *
+# Create a JSON representation of an object
+budget = Budget(2021)
+budget.asdict()
+{'year': 2021, 'daysof':'dayso ... '}
+```
+
 ### Unit Testing
 
 To run the tests and check the stability of the code, just run:

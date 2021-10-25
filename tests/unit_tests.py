@@ -183,15 +183,15 @@ class BudgetMeTestCase(unittest.TestCase):
         budget.updateTransaction("Bar", month=1, day=1, amount=100)
         self.assertEqual(220, budget.getFinalBalance())
 
-    def test_calculate_deviation(self):
+    def test_calculate_variance(self):
         budget = Budget(2020)
         budget.addAccount("Foo", days=[10])
         budget.addAccount("Bar", days=[0])
         budget.updateTransaction("Bar", month=1, day=1, amount=100)
-        self.assertEqual(0, budget.getDeviationForMonth("Foo", 1))
-        self.assertEqual(100, budget.getDeviationForMonth("Bar", 1))
+        self.assertEqual(0, budget.getVarianceForMonth("Foo", 1))
+        self.assertEqual(100, budget.getVarianceForMonth("Bar", 1))
         budget.updateTransaction("Foo", month=1, day=1, amount=90)
-        self.assertEqual(100, budget.getDeviationForMonth("Bar", 1))
+        self.assertEqual(100, budget.getVarianceForMonth("Bar", 1))
 
     def test_get_monthly_balance(self):
         budget = Budget(2020)
