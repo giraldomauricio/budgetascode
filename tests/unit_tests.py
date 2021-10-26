@@ -1,5 +1,8 @@
 import unittest
-from BudgetMe.Account import *
+from BudgetMe.Forecast import Forecast
+from BudgetMe.Budget import Budget
+from BudgetMe.Account import Account
+from BudgetMe.Bank import Bank
 from datetime import date
 
 
@@ -146,6 +149,11 @@ class BudgetMeTestCase(unittest.TestCase):
             self.assertTrue(False)
         except:
             self.assertTrue(True)
+
+    def test_budget_of_less_than_twelve_months(self):
+        budget = Budget(2020, daysof=2, start=10, end=12)
+        budget.addAccount("Foo",days=[10,0], start=10)
+        self.assertEqual(6, len(budget.getAccount("Foo").forecast_array))
 
     def test_all_transactions_have_the_same_days(self):
         budget = Budget(2020, daysof=2)

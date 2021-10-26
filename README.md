@@ -1,8 +1,9 @@
 # BaC 
 ## Budget As Code
-Easy personal budget management in Python.
+Advanced personal budget management in Python.
 
-Author: Mauricio Giraldo <mgiraldo@gmail.com>
+* Author: Mauricio Giraldo <mgiraldo@gmail.com>
+* Version: 1.14.017d15a
 
 ### Installations
 
