@@ -131,8 +131,8 @@ class BudgetMeTestCase(unittest.TestCase):
         bm = Account(account="Foo", year=2020)
         bm.days = [10]
         bm.init()
-        self.assertEqual(20, bm.getBalancePreviousMont(month=3))
-        self.assertEqual(0, bm.getBalancePreviousMont(month=1))
+        self.assertEqual(20, bm.getBalancePreviousMonth(month=3))
+        self.assertEqual(0, bm.getBalancePreviousMonth(month=1))
 
     def test_transer_balance_previous_month(self):
         bm = Account(account="Foo", year=2020)
@@ -152,7 +152,7 @@ class BudgetMeTestCase(unittest.TestCase):
 
     def test_budget_of_less_than_twelve_months(self):
         budget = Budget(2020, daysof=2, start=10, end=12)
-        budget.addAccount("Foo",days=[10,0], start=10)
+        budget.addAccount("Foo", days=[10, 0], start=10)
         self.assertEqual(6, len(budget.getAccount("Foo").forecast_array))
 
     def test_all_transactions_have_the_same_days(self):
@@ -297,6 +297,34 @@ class BudgetMeTestCase(unittest.TestCase):
         budget.transferFromAccountToBank(from_account="FooAccount", to_bank="Bar")
         self.assertEqual(-120, budget.getBank("Bar").balance)
 
+    def test_parent_accounts(self):
+        budget = Budget(2020)
+        budget.addBank("FooBank")
+        budget.addBank("Bar")
+        budget.addAccount("Parent", days=[-10], category="Credit Card", bank="FooBank")
+        budget.addAccount("Child 1", days=[-10], category="Credit Card", bank="FooBank", parent="Parent")
+        budget.addAccount("Child 2", days=[-10], category="Credit Card", bank="FooBank", parent="Parent")
+        self.assertEqual(2, len(budget.getChildAccounts(parent_name="Parent")))
+
+    def test_get_balance_of_account(self):
+        budget = Budget(2020)
+        budget.addBank("FooBank")
+        budget.addAccount("Parent", days=[-10], category="Credit Card", bank="FooBank")
+        self.assertEqual(-120, budget.getAccountBalance("Parent"))
+
+    def test_balances_of_parent_accounts(self):
+        budget = Budget(2020)
+        budget.addBank("FooBank")
+        budget.addBank("Bar")
+        budget.addAccount("Parent", days=[-10], category="Credit Card", bank="FooBank")
+        budget.addAccount("Child 1", days=[-10], category="Credit Card", bank="FooBank", parent="Parent")
+        budget.addAccount("Child 2", days=[-10], category="Credit Card", bank="FooBank", parent="Parent")
+        budget.addAccount("No child", days=[-10], category="Credit Card", bank="FooBank")
+        self.assertEqual(0, len(budget.getChildAccounts(parent_name="No child")))
+        self.assertEqual(2, len(budget.getChildAccounts(parent_name="Parent")))
+        self.assertEqual(-240, budget.getAccountBalance("Parent"))
+
+
     def test_calculate_savings(self):
         budget = Budget(2020)
         budget.addBank("FooBank")
@@ -322,7 +350,8 @@ class BudgetMeTestCase(unittest.TestCase):
         account_json = {'name': 'Foo', 'year': 2022, 'forecast_array': [], 'account': 'Foo', 'days': [],
                         'category': 'Bar', 'frequency': 1, 'start': 2,
                         'bank': {'name': 'FooBank', 'balance': 0, 'transactions': []}, 'periodical': True,
-                        'txn_mode': 'Optional'}
+                        'txn_mode': 'Optional', 'budget_start': 1, 'budget_end': 2, 'parent': 'None',
+                        'transfer_balance': "False"}
         account = Budget.createAccountFromJson(account_json)
         self.assertEqual("Account", str(type(account).__name__))
         self.assertEqual("Bank", str(type(account.bank).__name__))
@@ -371,31 +400,33 @@ class BudgetMeTestCase(unittest.TestCase):
                                                                     'start': 1,
                                                                     'bank': {'name': 'FooBank', 'balance': -120,
                                                                              'transactions': [{
-                                                                                                  'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
-                                                                                                  'amount': -10}, {
-                                                                                                  'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
-                                                                                                  'amount': -10}, {
-                                                                                                  'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
-                                                                                                  'amount': -10}, {
-                                                                                                  'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
-                                                                                                  'amount': -10}, {
-                                                                                                  'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
-                                                                                                  'amount': -10}, {
-                                                                                                  'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
-                                                                                                  'amount': -10}, {
-                                                                                                  'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
-                                                                                                  'amount': -10}, {
-                                                                                                  'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
-                                                                                                  'amount': -10}, {
-                                                                                                  'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
-                                                                                                  'amount': -10}, {
-                                                                                                  'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
-                                                                                                  'amount': -10}, {
-                                                                                                  'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
-                                                                                                  'amount': -10}, {
-                                                                                                  'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
-                                                                                                  'amount': -10}]},
-                                                                    'periodical': False, 'txn_mode': 'Optional'}],
+                                                                                 'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
+                                                                                 'amount': -10}, {
+                                                                                 'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
+                                                                                 'amount': -10}, {
+                                                                                 'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
+                                                                                 'amount': -10}, {
+                                                                                 'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
+                                                                                 'amount': -10}, {
+                                                                                 'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
+                                                                                 'amount': -10}, {
+                                                                                 'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
+                                                                                 'amount': -10}, {
+                                                                                 'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
+                                                                                 'amount': -10}, {
+                                                                                 'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
+                                                                                 'amount': -10}, {
+                                                                                 'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
+                                                                                 'amount': -10}, {
+                                                                                 'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
+                                                                                 'amount': -10}, {
+                                                                                 'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
+                                                                                 'amount': -10}, {
+                                                                                 'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
+                                                                                 'amount': -10}]},
+                                                                    'periodical': False, 'txn_mode': 'Optional',
+                                                                    'budget_start': 2, 'budget_end': 2,
+                                                                    'parent': 'None', 'transfer_balance': 'False'}],
                        'banks': [{'name': 'FooBank', 'balance': -120,
                                   'transactions': [{'id': '535bf824-99f1-329c-a4d9-68e0887ca66f', 'amount': -10},
                                                    {'id': '535bf824-99f1-329c-a4d9-68e0887ca66f', 'amount': -10},
@@ -436,31 +467,33 @@ class BudgetMeTestCase(unittest.TestCase):
                  'previous': -110}], 'account': 'Optional 1', 'days': [-10], 'category': 'Credit Card', 'frequency': 1,
                                                          'start': 1, 'bank': {'name': 'FooBank', 'balance': -120,
                                                                               'transactions': [{
-                                                                                                   'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
-                                                                                                   'amount': -10}, {
-                                                                                                   'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
-                                                                                                   'amount': -10}, {
-                                                                                                   'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
-                                                                                                   'amount': -10}, {
-                                                                                                   'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
-                                                                                                   'amount': -10}, {
-                                                                                                   'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
-                                                                                                   'amount': -10}, {
-                                                                                                   'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
-                                                                                                   'amount': -10}, {
-                                                                                                   'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
-                                                                                                   'amount': -10}, {
-                                                                                                   'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
-                                                                                                   'amount': -10}, {
-                                                                                                   'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
-                                                                                                   'amount': -10}, {
-                                                                                                   'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
-                                                                                                   'amount': -10}, {
-                                                                                                   'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
-                                                                                                   'amount': -10}, {
-                                                                                                   'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
-                                                                                                   'amount': -10}]},
-                                                         'periodical': False, 'txn_mode': 'Optional', 'end': 12}}
+                                                                                  'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
+                                                                                  'amount': -10}, {
+                                                                                  'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
+                                                                                  'amount': -10}, {
+                                                                                  'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
+                                                                                  'amount': -10}, {
+                                                                                  'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
+                                                                                  'amount': -10}, {
+                                                                                  'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
+                                                                                  'amount': -10}, {
+                                                                                  'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
+                                                                                  'amount': -10}, {
+                                                                                  'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
+                                                                                  'amount': -10}, {
+                                                                                  'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
+                                                                                  'amount': -10}, {
+                                                                                  'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
+                                                                                  'amount': -10}, {
+                                                                                  'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
+                                                                                  'amount': -10}, {
+                                                                                  'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
+                                                                                  'amount': -10}, {
+                                                                                  'id': '535bf824-99f1-329c-a4d9-68e0887ca66f',
+                                                                                  'amount': -10}]},
+                                                         'periodical': False, 'txn_mode': 'Optional', 'budget_start': 2,
+                                                         'budget_end': 2, 'parent': 'None',
+                                                         'transfer_balance': 'False'}}
         budget = Budget.createBudgetFromJson(budget_json)
         self.assertEqual("Budget", str(type(budget).__name__))
 

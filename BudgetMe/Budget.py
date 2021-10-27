@@ -3,6 +3,7 @@ import xlsxwriter
 from BudgetMe.Account import Account
 from BudgetMe.Bank import Bank
 from BudgetMe.Forecast import Forecast
+from BudgetMe.BudgetException import *
 
 
 class Budget:
@@ -17,8 +18,8 @@ class Budget:
         self.days_labels = [""] * daysof
         self.banks = []
         self.template = {}
-        self.start:int = start
-        self.end:int = end
+        self.start: int = start
+        self.end: int = end
 
     def asdict(self) -> dict:
         """
@@ -31,9 +32,11 @@ class Budget:
             transactions.append(txn.asdict())
         for bank in self.banks:
             banks.append(bank.asdict())
-        return {"year": self.year, "daysof": self.daysof, "transactions": transactions, "banks": banks, "days_labels": self.days_labels, "template": self.template, "start": self.start, "end": self.end}
+        return {"year": self.year, "daysof": self.daysof, "transactions": transactions, "banks": banks,
+                "days_labels": self.days_labels, "template": self.template, "start": self.start, "end": self.end}
 
-    def addAccount(self, name, days, category="", frequency=1, start=1, end=12, bank="", periodical=False, txn_mode="Required", use_last=False) -> Account:
+    def addAccount(self, name, days, category="", frequency=1, start=1, end=12, bank="", periodical=False,
+                   txn_mode="Required", use_last=False, parent=None) -> Account:
         """
         Adds an account to the Budget
         :param name: Name of the account.
@@ -65,15 +68,17 @@ class Budget:
             raise Exception("All accounts must have the number of days associated during creation.")
         bank_instance = self.getBank(name=bank)
         account = Account(account=name, year=self.year, category=category, frequency=frequency, start=start,
-                          bank=bank_instance, periodical=periodical, txn_mode=txn_mode, budget_start=self.start, budget_end=self.end)
+                          bank=bank_instance, periodical=periodical, txn_mode=txn_mode, budget_start=self.start,
+                          budget_end=self.end, parent=parent)
         account.days = days
         account.init(range_start=start, range_end=end)
         self.transactions.append(account)
-        self.template = account.asdict() # Save the basic parameters to be reused and simplify the entries.
+        self.template = account.asdict()  # Save the basic parameters to be reused and simplify the entries.
         self.template['end'] = end
         return account
 
-    def addSingleAccount(self, name, month, days=[], category="", bank="", periodical=False, txn_mode="Required", use_last=False) -> Account:
+    def addSingleAccount(self, name, month, days=[], category="", bank="", periodical=False, txn_mode="Required",
+                         use_last=False, parent=None) -> Account:
         """
         Creates an account that only has one single transaction in the entire year.
         :param name: Name of the account.
@@ -100,12 +105,38 @@ class Budget:
             raise Exception("All accounts must have the number of days associated during creation.")
         bank_instance = self.getBank(name=bank)
         account = Account(account=name, year=self.year, category=category, frequency=1, start=month,
-                          bank=bank_instance, periodical=periodical, txn_mode=txn_mode)
+                          bank=bank_instance, periodical=periodical, txn_mode=txn_mode, parent=parent)
         account.days = days
         account.init_single_month(month)
         self.transactions.append(account)
         self.template = account.asdict()  # Save the basic parameters to be reused and simplify the entries.
         return account
+
+    def getAccountBalance(self, account_name) -> float:
+        """
+        Gets the balance of an specified Account. If the account has child accounts, the balance is from the child accounts.
+        :param account:
+        :return: Float
+        """
+        balance = 0
+        accounts = [d for d in self.transactions if d.parent == account_name]
+        if (len(accounts) > 0):
+            for account in accounts:
+                balance += account.getFinalBalance()
+            return balance
+        else:
+            account = self.getAccount(account_name)
+            return account.getFinalBalance()
+
+    def accountHasChildAccounts(self, account_name) -> bool:
+        return len(self.getChildAccounts(parent_name=account_name)) > 0
+
+    def getChildAccounts(self, parent_name) -> []:
+        """
+        Gets the child accounts of a parent Account
+        :return:
+        """
+        return [d for d in self.transactions if d.parent == parent_name]
 
     def getCategories(self) -> list:
         """
@@ -219,7 +250,7 @@ class Budget:
             balance += account.getMonthBalance(month)
         return balance
 
-    def getVarianceForMonth(self, account:str, month:int) -> float:
+    def getVarianceForMonth(self, account: str, month: int) -> float:
         """
         Gets the deviation (Forecasted vs Actual) of the month.
         :param month: the month number (1-12)
@@ -230,7 +261,6 @@ class Budget:
         for txn in transactions:
             dev += txn.amount - txn.planned
         return dev
-
 
     def getTotalBalanceByCategory(self, category) -> float:
         """
@@ -250,7 +280,10 @@ class Budget:
         :param account_name: Name of the Account
         :return: Account
         """
-        return [d for d in self.transactions if d.name == account_name][0]
+        try:
+            return [d for d in self.transactions if d.name == account_name][0]
+        except:
+            raise BudgetAccountNotFound("Account %s not found." % account_name)
 
     def getMonthName(self, month_number):
         """
@@ -291,7 +324,7 @@ class Budget:
         # Months Columns Headers
         html += "\t<tr style=\"background-color: cornflowerblue; color: aliceblue\">\n"
         html += "\t\t<td style=\"text-align: center; font-weight: bold\">" + str(self.year) + "</td>\n"
-        for month in range(1, 13):
+        for month in range(self.start, self.end + 1):
             html += "\t\t<td colspan=\"" + str(
                 self.daysof) + "\" style=\"text-align: center; font-weight: bold\">" + str(
                 self.getMonthName(month)) + "</td>\n"
@@ -300,35 +333,70 @@ class Budget:
         # Days labels columns headers
         html += "\t<tr style=\"background-color: cadetblue; color: aliceblue\">\n"
         html += "\t\t<td style=\"background-color: #EEEEEE; color\">&nbsp;</td>\n"
-        for month in range(1, 13):
+        for month in range(self.start, self.end + 1):
             for label in self.days_labels:
                 html += "\t\t<td style=\"text-align: center; font-weight: bold; font-size: x-small;\">" + label + "</td>\n"
         html += "\t\t<td>Final&nbsp;balances</td>\n"
         html += "\t</tr>\n"
+        # ------------
         for row in self.transactions:
-            html += "\t<tr>\n"
-            html += "\t\t<td>" + row.name + "</td>\n"
-            for month in range(1, 13):
-                for day in row.getMonth(month):
-                    if (day.amount > 0):
-                        html += "\t\t<td class=\"positive\">" + self.formatCurrency(day.amount) + "</td>\n"
-                    elif (day.amount == 0):
+            if (self.accountHasChildAccounts(row.name)):
+                html += "\t<tr>\n"
+                html += "\t\t<td><strong>" + row.name + "</strong></td>\n"
+                for month in range(self.start, self.end + 1):
+                    for day in row.getMonth(month):
                         html += "\t\t<td style=\"background-color: #EEEEEE;\">&nbsp;</td>\n"
+                final_balance = self.getAccountBalance(row.name)
+                if (final_balance < 0):
+                    html += "\t\t<td  class=\"negative\">" + self.formatCurrency(final_balance) + "</td>\n"
+                else:
+                    html += "\t\t<td class=\"positive\">" + self.formatCurrency(final_balance) + "</td>\n"
+                html += "\t</tr>\n"
+                sub_row = self.getChildAccounts(row.name)
+                for child in sub_row:
+                    html += "\t<tr>\n"
+                    html += "\t\t<td class=\"sub_account\">&nbsp;&nbsp;" + child.name + "</td>\n"
+                    for month in range(self.start, self.end + 1):
+                        for day in child.getMonth(month):
+                            if (day.amount > 0):
+                                html += "\t\t<td class=\"positive_italic\">&nbsp;&nbsp;" + self.formatCurrency(
+                                    day.amount) + "</td>\n"
+                            elif (day.amount == 0):
+                                html += "\t\t<td style=\"background-color: #EEEEEE;\">&nbsp;</td>\n"
+                            else:
+                                html += "\t\t<td class=\"negative_italic\">&nbsp;&nbsp;" + self.formatCurrency(
+                                    day.amount) + "</td>\n"
+                    final_balance = self.getAccountBalance(child.name)
+                    if (final_balance < 0):
+                        html += "\t\t<td  class=\"negative_italic\">" + self.formatCurrency(final_balance) + "</td>\n"
                     else:
-                        html += "\t\t<td class=\"negative\">" + self.formatCurrency(
-                            day.amount) + "</td>\n"
-            final_balance = row.getFinalBalance()
-            if (final_balance < 0):
-                html += "\t\t<td  class=\"negative\">" + self.formatCurrency(
-                    row.getFinalBalance()) + "</td>\n"
+                        html += "\t\t<td class=\"positive_italic\">" + self.formatCurrency(final_balance) + "</td>\n"
+                    html += "\t</tr>\n"
             else:
-                html += "\t\t<td class=\"positive\">" + self.formatCurrency(
-                    row.getFinalBalance()) + "</td>\n"
-            html += "\t</tr>\n"
+                html += "\t<tr>\n"
+                html += "\t\t<td>" + row.name + "</td>\n"
+                for month in range(self.start, self.end + 1):
+                    for day in row.getMonth(month):
+                        if (day.amount > 0):
+                            html += "\t\t<td class=\"positive\">" + self.formatCurrency(day.amount) + "</td>\n"
+                        elif (day.amount == 0):
+                            html += "\t\t<td style=\"background-color: #EEEEEE;\">&nbsp;</td>\n"
+                        else:
+                            html += "\t\t<td class=\"negative\">" + self.formatCurrency(
+                                day.amount) + "</td>\n"
+                final_balance = row.getFinalBalance()
+                if (final_balance < 0):
+                    html += "\t\t<td  class=\"negative\">" + self.formatCurrency(
+                        row.getFinalBalance()) + "</td>\n"
+                else:
+                    html += "\t\t<td class=\"positive\">" + self.formatCurrency(
+                        row.getFinalBalance()) + "</td>\n"
+                html += "\t</tr>\n"
+        # ------------
         # Monthly Balance
         html += "\t<tr style=\"background-color: aliceblue\">\n"
         html += "\t\t<td>Monthly&nbsp;balance</td>\n"
-        for month in range(1, 13):
+        for month in range(self.start, self.end + 1):
             monthly_balance = self.getMonthBalance(month)
             if (monthly_balance > 0):
                 html += "\t\t<td colspan=\"" + str(
@@ -343,7 +411,7 @@ class Budget:
         # Running Balances
         html += "\t<tr>\n"
         html += "\t\t<td>Running&nbsp;balance</td>\n"
-        for month in range(1, 13):
+        for month in range(self.start, self.end + 1):
             running_balance = self.getRunningBalance(month)
             if (running_balance > 0):
                 html += "\t\t<td colspan=\"" + str(
@@ -392,6 +460,11 @@ class Budget:
 			font-family: 'Helvetica';
 			border-collapse: collapse;
 		}
+		.sub_account {
+		    font-size: small;
+			font-family: 'Helvetica';
+			font-style: italic;
+		}
 		.negative {
 			font-size: small;
 			font-family: 'Helvetica';
@@ -402,10 +475,23 @@ class Budget:
 			font-family: 'Helvetica';
 			background-color: #bfffd5;
 		}
+		.positive_italic {
+			font-size: smaller;
+			font-family: 'Helvetica';
+			background-color: #bfffd5;
+			font-style: italic;
+		}
+		.negative_italic {
+			font-size: smaller;
+			font-family: 'Helvetica';
+			background-color: #fde1e5;
+			font-style: italic;
+		}
 	</style>"""
         body = "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\">\n<title>Report</title>\n" + css + "</head>\n<body>\n" + html + "\n</body>\n</html>"
         return body
 
+    # TODO: Fix Excel generation. The columns are not considering Budgets of less than twelve months.
     def generateExcelFile(self, filename="budget.xlsx"):
         """
         Generates a file with representation of the Budget HTML in Excel format.
@@ -430,16 +516,32 @@ class Budget:
         worksheet.write("Z2", "Final balances")
         row_counter = 2
         for row in self.transactions:
-            row_counter += 1
-            worksheet.write("A%s" % row_counter, row.name)
-            days_counter = 0
-            for txn in row.forecast_array:
+            if (self.accountHasChildAccounts(row.name)):
+                child_accounts = self.getChildAccounts(row.name)
+                row_counter += 1
+                worksheet.write("A%s" % row_counter, row.name)
+                for child in child_accounts:
+                    row_counter += 1
+                    worksheet.write("A%s" % row_counter, "- " + child.name)
+                    days_counter = 0
+                    for txn in child.forecast_array:
+                        days_counter += 1
+                        col = 65 + days_counter
+                        worksheet.write("%s%s" % (chr(col), row_counter), txn.amount)
+                    days_counter += 1
+                    col = 65 + days_counter
+                    worksheet.write("%s%s" % (chr(col), row_counter), child.getFinalBalance())
+            else:
+                row_counter += 1
+                worksheet.write("A%s" % row_counter, row.name)
+                days_counter = 0
+                for txn in row.forecast_array:
+                    days_counter += 1
+                    col = 65 + days_counter
+                    worksheet.write("%s%s" % (chr(col), row_counter), txn.amount)
                 days_counter += 1
                 col = 65 + days_counter
-                worksheet.write("%s%s" % (chr(col), row_counter), txn.amount)
-            days_counter += 1
-            col = 65 + days_counter
-            worksheet.write("%s%s" % (chr(col), row_counter), row.getFinalBalance())
+                worksheet.write("%s%s" % (chr(col), row_counter), row.getFinalBalance())
         # # Monthly Balance
         row_counter += 1
         worksheet.write("A%s" % row_counter, "Monthly balance")
@@ -507,7 +609,7 @@ class Budget:
         :param to_bank: Name of the bank.
         :return: None
         """
-        txn = Forecast(1,1,-1 * self.getAccount(from_account).getFinalBalance())
+        txn = Forecast(1, 1, -1 * self.getAccount(from_account).getFinalBalance())
         self.getBank(to_bank).addTransaction(txn)
 
     def addBank(self, name):
@@ -530,16 +632,17 @@ class Budget:
             return None
 
     @staticmethod
-    def createForecastFromJson(forecast_json:dict) -> Forecast:
+    def createForecastFromJson(forecast_json: dict) -> Forecast:
         """
         Creates a new Forecast object from a Forecast Dictionary.
         :param forecast_json: The json representation of the Forecast
         :return:
         """
-        return Forecast(month=forecast_json['month'], day=forecast_json['day'], amount=forecast_json['amount'], previous=forecast_json['previous'])
+        return Forecast(month=forecast_json['month'], day=forecast_json['day'], amount=forecast_json['amount'],
+                        previous=forecast_json['previous'])
 
     @staticmethod
-    def createBankFromJson(bank_json:dict) -> Bank:
+    def createBankFromJson(bank_json: dict) -> Bank:
         """
         Creates a new Bank object from a Bank Dictionary.
         :param bank_json: The json representation of the Bank
@@ -551,14 +654,18 @@ class Budget:
         return bank
 
     @staticmethod
-    def createAccountFromJson(account_json:dict) -> Account:
+    def createAccountFromJson(account_json: dict) -> Account:
         """
         Creates a new Account object from an Account Dictionary.
         :param account_json: The json representation of the Account
         :return:
         """
         bank = Budget.createBankFromJson(account_json['bank'])
-        account = Account(account_json['account'],year=account_json['year'],category=account_json['category'], frequency=account_json['frequency'], start=account_json['start'], bank=bank, periodical=account_json['periodical'], txn_mode=account_json['txn_mode'])
+        account = Account(account_json['account'], year=account_json['year'], category=account_json['category'],
+                          frequency=account_json['frequency'], start=account_json['start'], bank=bank,
+                          periodical=account_json['periodical'], txn_mode=account_json['txn_mode'],
+                          budget_start=account_json['budget_start'], budget_end=account_json['budget_end'],
+                          parent=account_json['parent'])
         for forecast in account_json['forecast_array']:
             account.forecast_array.append(Budget.createForecastFromJson(forecast))
         return account

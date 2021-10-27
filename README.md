@@ -3,7 +3,7 @@
 Advanced personal budget management in Python.
 
 * Author: Mauricio Giraldo <mgiraldo@gmail.com>
-* Version: 1.14.017d15a
+* Version: 1.15.4902e5e
 
 ### Installations
 
@@ -130,6 +130,13 @@ If you have a transaction that only happens once a year, you can use:
 ```python
 budget.addSingleAccount("Tax", month=3, days=[1000, 0], category="Taxes", bank="Checking")
 ```
+                 
+If the accounts only runs for a specific period of time, you can specify between what months it create transacions:
+
+```python
+budget.addSingleAccount("Tax", month=3, days=[1000, 0], category="Taxes", bank="Checking", budget_start=6, budget_end=10)
+```
+
 Finally, to see your budget, you can generate an HTML and/or an Excel file (The Excel is the representation of the HTML file):
 
 ```python
@@ -154,6 +161,30 @@ budget.generateExcelFile(filename="budget.xlsx")
 ```
 
 There is no limit on the number of accounts and Banks.
+
+### Parent Accounts
+
+BaC supports parent and child accounts. For example, some of your transactions are registered under one accounts.
+Lets say you have a Bank Account called "Chase" and you pay your phone and your rent with it. Also you get your paycheck in that account. You can create this as follows:
+
+```python
+from BudgetMe.Account import *
+
+budget = Budget(2022,daysof=2)
+budget.days_labels = ["Half 1","Half 2"]
+budget.addBank("Checking")
+budget.addAccount("Chase", days=[1000, 1000], category="Credit Card", bank="Checking")
+budget.addAccount("Paycheck", days=[2000,2000], category="Job", bank="Checking", parent="Chase")
+budget.addAccount("Phone", days=[0,-100], category="Phone", bank="Checking", parent="Chase")
+budget.addAccount("Rent", days=[-1000,0], category="Phone", bank="Checking", parent="Chase")
+budget.getAccountBalance("Chase")
+34800
+```
+34,800 = ((2000 + 2000) x 12) + ((0-100) x 12) + ((-1000 + 0) x 12)
+
+And not 24,000 becase Chase has child accounts.
+
+When you have parent accounts, the balance is calculated from the child accounts. BaC will ignore any input in the parent account.
 
 ### Utilities
 

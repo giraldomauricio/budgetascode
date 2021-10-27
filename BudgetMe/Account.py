@@ -4,6 +4,7 @@ from BudgetMe.BudgetException import BudgetAccountParametersInvalid
 from BudgetMe.Empty import EmptyObject
 from BudgetMe.Forecast import Forecast
 import xlsxwriter
+
 """
 BudgetMe is an approach to BaC (Budget as Code).
 Author: Mauricio Giraldo <mgiraldo@gmail.com> 
@@ -15,13 +16,14 @@ Author: Mauricio Giraldo <mgiraldo@gmail.com>
 # TODO: iOS migration.
 
 
-
 class Account:
     """
     Account is the base of any money movement in a year.
+    Child Accounts (With a Parent Account) only count in the balance if transfer_balance is set to True
     """
 
-    def __init__(self, account="", year=None, category="", frequency=1, start=1, bank=None, periodical=False, txn_mode="Required", budget_start=1, budget_end=12):
+    def __init__(self, account="", year=None, category="", frequency=1, start=1, bank=None, periodical=False,
+                 txn_mode="Required", budget_start=1, budget_end=12, parent=None):
         self.name = account
         if (not year or type(year) != int):
             todays_date = date.today()
@@ -39,6 +41,11 @@ class Account:
         self.txn_mode = txn_mode
         self.budget_start = budget_start
         self.budget_end = budget_end
+        self.parent = parent
+        if(parent):
+            self.transfer_balance = True
+        else:
+            self.transfer_balance = False
 
     def validate(self) -> bool:
         """
@@ -47,10 +54,11 @@ class Account:
         """
         valid_types = ["Debit", "Credit"]
         valid_modes = ["Required", "Optional"]
-        if(type(self.year) is not int):
+        if (type(self.year) is not int):
             raise ("Year (%s) must be a number. Is %s" % (self.year, type(self.year)))
         if (type(self.frequency) is not int):
-            raise BudgetAccountParametersInvalid("Frequency (%s) must be a number. Is %s" % (self.frequency, type(self.frequency)))
+            raise BudgetAccountParametersInvalid(
+                "Frequency (%s) must be a number. Is %s" % (self.frequency, type(self.frequency)))
         if (type(self.start) is not int):
             raise BudgetAccountParametersInvalid("Start (%s) must be a number. Is %s" % (self.start, type(self.start)))
         if (not self.txn_mode in valid_modes):
@@ -58,8 +66,8 @@ class Account:
         for day in self.days:
             if (type(day) is not float and type(day) is not int):
                 raise BudgetAccountParametersInvalid("Day (%s) must be a number. Is %s" % (day, type(day)))
-        if self.start < self.budget_start:
-                raise BudgetAccountParametersInvalid("The Account starts in a month (%s) before the Budget starts (%s)" % (self.start, self.budget_start))
+        # if self.start < self.budget_start:
+        #         raise BudgetAccountParametersInvalid("The Account starts in a month (%s) before the Budget starts (%s)" % (self.start, self.budget_start))
         return True
 
     def asdict(self):
@@ -75,7 +83,9 @@ class Account:
             forecast_array.append(forecast.asdict())
         return {"name": self.name, "year": self.year, "forecast_array": forecast_array, "account": self.account,
                 "days": self.days, "category": self.category, "frequency": self.frequency, "start": self.start,
-                "bank": self.bank.asdict(), "periodical": self.periodical, "txn_mode": self.txn_mode, "budget_start": self.budget_start, "budget_end": self.budget_end}
+                "bank": self.bank.asdict(), "periodical": self.periodical, "txn_mode": self.txn_mode,
+                "budget_start": self.budget_start, "budget_end": self.budget_end,
+                "parent": self.parent, "transfer_balance": self.transfer_balance}
 
     def init_single_month(self, month):
         self.init(range_start=month, range_end=month)
@@ -88,10 +98,10 @@ class Account:
         :return: None
         """
         self.validate()
-        if(range_start>range_end or range_end<1 or range_end>12):
+        if (range_start > range_end or range_end < 1 or range_end > 12):
             raise Exception("The range is incorrect.")
         frequency_counter = 0
-        for i in range(self.budget_start, self.budget_end+1):
+        for i in range(self.budget_start, self.budget_end + 1):
             if (i >= range_start and i <= range_end):
                 if (frequency_counter == self.frequency):
                     frequency_counter = 0
@@ -99,21 +109,22 @@ class Account:
                     frequency_counter += 1
                 if (frequency_counter == 1):
                     for j in range(1, len(self.days) + 1):
-                        forecast = Forecast(month=i, day=j, amount=self.days[j - 1], previous=self.getBalancePreviousMont(i))
+                        forecast = Forecast(month=i, day=j, amount=self.days[j - 1],
+                                            previous=self.getBalancePreviousMonth(i))
                         self.forecast_array.append(forecast)
                         if (self.bank):
                             self.bank.addTransaction(forecast)
                     # frequency_counter = 0
                 else:
                     for j in range(1, len(self.days) + 1):
-                        forecast = Forecast(month=i, day=j, amount=0, previous=self.getBalancePreviousMont(i))
+                        forecast = Forecast(month=i, day=j, amount=0, previous=self.getBalancePreviousMonth(i))
                         self.forecast_array.append(forecast)
             else:
                 for j in range(1, len(self.days) + 1):
-                    forecast = Forecast(month=i, day=j, amount=0, previous=self.getBalancePreviousMont(i))
+                    forecast = Forecast(month=i, day=j, amount=0, previous=self.getBalancePreviousMonth(i))
                     self.forecast_array.append(forecast)
 
-    def getBalancePreviousMont(self, month) -> float:
+    def getBalancePreviousMonth(self, month) -> float:
         """
         Gets the running balance of the previous month.
         :param month:
