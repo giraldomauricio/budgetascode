@@ -110,18 +110,18 @@ class Account:
                 if (frequency_counter == 1):
                     for j in range(1, len(self.days) + 1):
                         forecast = Forecast(month=i, day=j, amount=self.days[j - 1],
-                                            previous=self.getBalancePreviousMonth(i))
+                                            previous=self.getBalancePreviousMonth(i),account=self.name)
                         self.forecast_array.append(forecast)
                         if (self.bank):
                             self.bank.addTransaction(forecast)
                     # frequency_counter = 0
                 else:
                     for j in range(1, len(self.days) + 1):
-                        forecast = Forecast(month=i, day=j, amount=0, previous=self.getBalancePreviousMonth(i))
+                        forecast = Forecast(month=i, day=j, amount=0, previous=self.getBalancePreviousMonth(i), account=self.name)
                         self.forecast_array.append(forecast)
             else:
                 for j in range(1, len(self.days) + 1):
-                    forecast = Forecast(month=i, day=j, amount=0, previous=self.getBalancePreviousMonth(i))
+                    forecast = Forecast(month=i, day=j, amount=0, previous=self.getBalancePreviousMonth(i),account=self.name)
                     self.forecast_array.append(forecast)
 
     def getBalancePreviousMonth(self, month) -> float:
@@ -154,7 +154,7 @@ class Account:
         """
         [c for c in [d for d in self.forecast_array if d.month == month] if c.day == day][0].amount = amount
 
-    def setActualValue(self, month, day, amount):
+    def correctTransaction(self, month, day, amount):
         """
         Updates the actual value of a transaction of an account on a specified month and day.
         Actual value vs. amount will show the actual budget vs real values.
@@ -163,7 +163,42 @@ class Account:
         :param amount: Account name
         :return: None
         """
-        [c for c in [d for d in self.forecast_array if d.month == month] if c.day == day][0].actual_amount = amount
+        txn = [c for c in [d for d in self.forecast_array if d.month == month] if c.day == day][0]
+        txn.amount = amount
+        txn.confirmed = True
+
+    def confirmTransaction(self, month, day):
+        """
+        Updates the actual value of a transaction of an account on a specified month and day.
+        Actual value vs. amount will show the actual budget vs real values.
+        :param month: month of the transaction.
+        :param day: ordinal day of the transaction, not the actual day in the calendar
+        :param amount: Account name
+        :return: None
+        """
+        txn = [c for c in [d for d in self.forecast_array if d.month == month] if c.day == day][0].confirmed = True
+
+    def removeConfirmTransaction(self, month, day):
+        """
+        Removes the confirmation of the actual value of a transaction of an account on a specified month and day.
+        Actual value vs. amount will show the actual budget vs real values.
+        :param month: month of the transaction.
+        :param day: ordinal day of the transaction, not the actual day in the calendar
+        :param amount: Account name
+        :return: None
+        """
+        txn = [c for c in [d for d in self.forecast_array if d.month == month] if c.day == day][0].confirmed = False
+
+    def correctPreviousBalance(self, month, day, previous):
+        """
+        Updates the actual value of a transaction of an account on a specified month and day.
+        Actual value vs. amount will show the actual budget vs real values.
+        :param month: month of the transaction.
+        :param day: ordinal day of the transaction, not the actual day in the calendar
+        :param amount: Account name
+        :return: None
+        """
+        [c for c in [d for d in self.forecast_array if d.month == month] if c.day == day][0].previous = previous
 
     def getFinalBalance(self) -> float:
         """
@@ -184,6 +219,31 @@ class Account:
         balance = 0
         month_transactions = [d for d in self.forecast_array if d.month == month]
         for txn in month_transactions:
+            balance += txn.amount
+        return balance
+
+    def getMonthDayBalance(self, month, day) -> float:
+        """
+        Returns the balance of an account for a specific month and day.
+        :param month:
+        :return:
+        """
+        balance = 0
+        month_transactions = [d for d in self.forecast_array if d.month == month and d.day == day]
+        for txn in month_transactions:
+            balance += txn.amount
+        return balance
+
+    def getMonthBalance2(self, month) -> float:
+        """
+        Returns the balance of an account for a specific month.
+        :param month:
+        :return:
+        """
+        balance = 0
+        month_transactions = [d for d in self.forecast_array if d.month == month]
+        for txn in month_transactions:
+            print(txn.account,",",txn.month,",",txn.day,",",txn.amount)
             balance += txn.amount
         return balance
 

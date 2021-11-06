@@ -189,6 +189,8 @@ class BudgetMeTestCase(unittest.TestCase):
         budget.addAccount("Foo", days=[10])
         budget.addAccount("Bar", days=[0])
         budget.updateTransaction("Bar", month=1, day=1, amount=100)
+        for txn in budget.transactions:
+            print(txn.asdict())
         self.assertEqual(220, budget.getFinalBalance())
 
     def test_calculate_variance(self):

@@ -250,6 +250,28 @@ class Budget:
             balance += account.getMonthBalance(month)
         return balance
 
+    def getMonthDayBalance(self, month, day) -> float:
+        """
+        Returns the balance of the specified month and day.
+        :param month: Month to query.
+        :return:
+        """
+        balance = 0
+        for account in self.transactions:
+            balance += account.getMonthDayBalance(month,day)
+        return balance
+
+    def getMonthBalance2(self, month) -> float:
+        """
+        Returns the balance of the specified month.
+        :param month: Month to query.
+        :return:
+        """
+        balance = 0
+        for account in self.transactions:
+            balance += account.getMonthBalance2(month)
+        return balance
+
     def getVarianceForMonth(self, account: str, month: int) -> float:
         """
         Gets the deviation (Forecasted vs Actual) of the month.
@@ -305,7 +327,40 @@ class Budget:
         :param amount: Amount to update.
         :return: None
         """
-        self.getAccount(account_name=account_name).setAmount(month, day, amount)
+        self.getAccount(account_name=account_name).correctTransaction(month, day, amount)
+
+    def updatePreviousBalance(self, account_name, month, day, previous):
+        """
+        Updates a transaction in an account.
+        :param account_name: Name of the account.
+        :param month: Month to update.
+        :param day: Day to update.
+        :param amount: Amount to update.
+        :return: None
+        """
+        self.getAccount(account_name=account_name).correctPreviousBalance(month, day, previous)
+
+    def confirmTransaction(self, account_name, month, day):
+        """
+        Updates a transaction in an account.
+        :param account_name: Name of the account.
+        :param month: Month to update.
+        :param day: Day to update.
+        :param amount: Amount to update.
+        :return: None
+        """
+        self.getAccount(account_name=account_name).confirmTransaction(month, day)
+
+    def removeConfirmTransaction(self, account_name, month, day):
+        """
+        Removes confirmation of a transaction in an account.
+        :param account_name: Name of the account.
+        :param month: Month to update.
+        :param day: Day to update.
+        :param amount: Amount to update.
+        :return: None
+        """
+        self.getAccount(account_name=account_name).removeConfirmTransaction(month, day)
 
     def formatCurrency(self, number) -> str:
         """
@@ -314,6 +369,12 @@ class Budget:
         :return: String
         """
         return "${:,.2f}".format(number)
+
+    def setHtmlToConfirmed(self, txn):
+        if(txn.confirmed):
+            return " confirmed"
+        else:
+            return ""
 
     def generateHTMLTable(self) -> str:
         """
@@ -359,12 +420,12 @@ class Budget:
                     for month in range(self.start, self.end + 1):
                         for day in child.getMonth(month):
                             if (day.amount > 0):
-                                html += "\t\t<td class=\"positive_italic\">&nbsp;&nbsp;" + self.formatCurrency(
+                                html += "\t\t<td class=\"positive_italic " + self.setHtmlToConfirmed(day) + " \">&nbsp;&nbsp;" + self.formatCurrency(
                                     day.amount) + "</td>\n"
                             elif (day.amount == 0):
                                 html += "\t\t<td style=\"background-color: #EEEEEE;\">&nbsp;</td>\n"
                             else:
-                                html += "\t\t<td class=\"negative_italic\">&nbsp;&nbsp;" + self.formatCurrency(
+                                html += "\t\t<td class=\"negative_italic " + self.setHtmlToConfirmed(day) + " \">&nbsp;&nbsp;" + self.formatCurrency(
                                     day.amount) + "</td>\n"
                     final_balance = self.getAccountBalance(child.name)
                     if (final_balance < 0):
@@ -378,11 +439,11 @@ class Budget:
                 for month in range(self.start, self.end + 1):
                     for day in row.getMonth(month):
                         if (day.amount > 0):
-                            html += "\t\t<td class=\"positive\">" + self.formatCurrency(day.amount) + "</td>\n"
+                            html += "\t\t<td class=\"positive " + self.setHtmlToConfirmed(day) + " \">" + self.formatCurrency(day.amount) + "</td>\n"
                         elif (day.amount == 0):
                             html += "\t\t<td style=\"background-color: #EEEEEE;\">&nbsp;</td>\n"
                         else:
-                            html += "\t\t<td class=\"negative\">" + self.formatCurrency(
+                            html += "\t\t<td class=\"negative " + self.setHtmlToConfirmed(day) + " \">" + self.formatCurrency(
                                 day.amount) + "</td>\n"
                 final_balance = row.getFinalBalance()
                 if (final_balance < 0):
@@ -393,6 +454,20 @@ class Budget:
                         row.getFinalBalance()) + "</td>\n"
                 html += "\t</tr>\n"
         # ------------
+        html += "\t<tr style=\"background-color: aliceblue\">\n"
+        html += "\t\t<td>Balances</td>\n"
+        for month in range(self.start, self.end + 1):
+            for day in range(1, self.daysof + 1):
+                monthly_balance = self.getMonthDayBalance(month, day)
+                if (monthly_balance > 0):
+                    html += "\t\t<td class=\"positive centered\">" + self.formatCurrency(
+                        monthly_balance) + "</td>\n"
+                else:
+                    html += "\t\t<td class=\"negative centered\">" + self.formatCurrency(
+                        monthly_balance) + "</td>\n"
+        html += "\t\t<td>&nbsp;</td>\n"
+        html += "\t</tr>\n"
+        # ------------
         # Monthly Balance
         html += "\t<tr style=\"background-color: aliceblue\">\n"
         html += "\t\t<td>Monthly&nbsp;balance</td>\n"
@@ -400,11 +475,11 @@ class Budget:
             monthly_balance = self.getMonthBalance(month)
             if (monthly_balance > 0):
                 html += "\t\t<td colspan=\"" + str(
-                    self.daysof) + "\" class=\"positive\">" + self.formatCurrency(
+                    self.daysof) + "\" class=\"positive centered\">" + self.formatCurrency(
                     monthly_balance) + "</td>\n"
             else:
                 html += "\t\t<td colspan=\"" + str(
-                    self.daysof) + "\"  class=\"negative\">" + self.formatCurrency(
+                    self.daysof) + "\"  class=\"negative centered\">" + self.formatCurrency(
                     monthly_balance) + "</td>\n"
         html += "\t\t<td>&nbsp;</td>\n"
         html += "\t</tr>\n"
@@ -415,15 +490,15 @@ class Budget:
             running_balance = self.getRunningBalance(month)
             if (running_balance > 0):
                 html += "\t\t<td colspan=\"" + str(
-                    self.daysof) + "\" class=\"positive\">" + self.formatCurrency(
+                    self.daysof) + "\" class=\"positive, centered\">" + self.formatCurrency(
                     running_balance) + "</td>\n"
             else:
                 html += "\t\t<td colspan=\"" + str(
-                    self.daysof) + "\"  class=\"negative\">" + self.formatCurrency(
+                    self.daysof) + "\"  class=\"negative, centered\">" + self.formatCurrency(
                     running_balance) + "</td>\n"
         total_balance = self.getFinalBalance()
         if (total_balance < 0):
-            html += "\t\t<td   class=\"negative\">&nbsp;" + self.formatCurrency(
+            html += "\t\t<td   class=\"negative, centered\">&nbsp;" + self.formatCurrency(
                 total_balance) + "</td>\n"
         else:
             html += "\t\t<td  style=\"text-align: right; font-weight: bold\">&nbsp;" + self.formatCurrency(
@@ -452,7 +527,9 @@ class Budget:
         html += "<td style=\"text-align: center; font-weight: bold \">Potential savings</td>\n"
         html += "<tr>\n"
         html += "\t<td style=\"text-align: right\">" + self.formatCurrency(self.calcualtePotentialSavings()) + "</td>\n"
-        html += "<tr>\n"
+        html += "</tr>\n"
+        html += "</table>"
+        html += "</tr>\n"
         html += "</table>"
         css = """<style type="text/css">
 		table {
@@ -487,6 +564,12 @@ class Budget:
 			background-color: #fde1e5;
 			font-style: italic;
 		}
+		.centered {
+            text-align: center;
+        }
+        .confirmed {
+            text-decoration: green underline overline wavy;
+        }
 	</style>"""
         body = "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\">\n<title>Report</title>\n" + css + "</head>\n<body>\n" + html + "\n</body>\n</html>"
         return body
