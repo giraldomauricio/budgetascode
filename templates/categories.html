@@ -43,7 +43,7 @@
     {% for cat in categories %}
     <tr>
         <td>{{ cat.name }}</td>
-        <td class="text-end"><small>${{ cat.value }}</small></td>
+        <td class="text-end"><small>{{ "${:,.2f}".format(cat.value) }}</small></td>
     </tr>
     {% endfor %}
     </tbody>

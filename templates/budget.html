@@ -35,14 +35,14 @@
 
 <table class="table table-bordered border-primary table-primary table-striped table-hover">
     <thead>
-    <tr>
+    <tr class="table-info">
         <th scope="col">&nbsp;</th>
         {% for item in months %}
         <th class="text-center" colspan="{{ budget.daysof }}" scope="col"><small>{{ item }}</small></th>
         {% endfor %}
         <th scope="col">&nbsp;</th>
     </tr>
-    <tr>
+    <tr class="table-success">
         <th scope="col">&nbsp;</th>
         {% for item in months %}
         {% for label in budget.days_labels %}
@@ -57,22 +57,22 @@
     <tr>
         <td>{{ txn.name }}</td>
         {% for forecast in txn.forecast_array %}
-        <td class="text-end"><small>${{ forecast.amount }}</small></td>
+        <td class="text-end {% if forecast.amount < 0 %} table-danger {% endif %}"><small>{{ "${:,.2f}".format(forecast.amount) }}</small></td>
         {% endfor %}
-        <td class="text-end"><small>${{ txn.balance }}</small></td>
+        <td class="text-end {% if txn.balance < 0 %} table-danger {% endif %}"><small>{{ "${:,.2f}".format(txn.balance) }}</small></td>
     </tr>
     {% endfor %}
-    <tr>
+    <tr class="table-success">
         <td>Balance</td>
         {% for item in monthly_day_balance %}
-        <td class="text-center"><small>${{ item }}</small></td>
+        <td class="text-center {% if item < 0 %} table-danger {% endif %}"><small>{{ "${:,.2f}".format(item) }}</small></td>
         {% endfor %}
         <td>&nbsp;</td>
     </tr>
-    <tr>
+    <tr class="table-info">
         <td>Month Balance</td>
         {% for item in monthly_balance %}
-        <th class="text-center" colspan="{{ budget.daysof }}" scope="col"><small>${{ item }}</small></th>
+        <th class="text-center {% if item < 0 %} table-danger {% endif %}" colspan="{{ budget.daysof }}" scope="col"><small>{{ "${:,.2f}".format(item) }}</small></th>
         {% endfor %}
         <td>&nbsp;</td>
     </tr>
