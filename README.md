@@ -2,12 +2,17 @@
 ## Budget As Code
 Advanced personal budget management in Python.
 
-* Author: Mauricio Giraldo <mgiraldo@gmail.com>
+* Author: Mauricio Giraldo
 * Version: 1.16.87429b8
+* Compatibility: Python 3 (Win/Linux/Mac)
+
+BudgetAsCode (BaC) is a programmatic approach to personal finance. These days, managing is as important as planning for your future. Many budget applications look and feel like an Excel spreadsheet or are designed with a marketing background as a leading strategy. Budget as code lets you see your finances as code in Python, not as a database somewhere. You can create your objects and modify them to see how your finance looks. Check savings, monthly balances to understand where the money is going. Then adjust your entries until you get to the point that you can feel you are not living paycheck to paycheck. The final objective is to end with some savings each month to move to an account to get a healthier personal finance.
+BaC includes basic objects to manipulate the data and even a Flask application to see everything from a broad perspective.
+BaC is constantly changing and evolving to provide tools that you can use to get better, like potential savings or alerts when a month goes negative.
 
 ### Installations
 
-First, run the dependencies installation:
+First, run the dependencies' installation:
 
 ```shell script
 pip install -r requirements.txt
