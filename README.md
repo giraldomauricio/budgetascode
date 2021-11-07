@@ -3,7 +3,7 @@
 Advanced personal budget management in Python.
 
 * Author: Mauricio Giraldo <mgiraldo@gmail.com>
-* Version: 1.15.4902e5e
+* Version: 1.16.87429b8
 
 ### Installations
 
