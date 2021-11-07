@@ -288,6 +288,58 @@ budget.asdict()
 {'year': 2021, 'daysof':'dayso ... '}
 ```
 
+### Plug-Ins
+
+Writing plug-ins is pretty simple. Just inherit the Budget class and create the needed methods to extend the main class:
+
+```python
+from BudgetMe.Budget import Budget
+
+class BudgetExtendedSample(Budget):
+
+    def __init__(self, year, daysof=1, start=1, end=12):
+        super(BudgetExtendedSample, self).__init__(year, daysof, start, end)
+
+    def calculateMonthsOfBudget(self) -> int:
+        return self.end - self.start
+```
+
+### Flask Implementation
+
+You can create your budget as a class with a static method to use it in your Flask implementation:
+
+Your budget class:
+
+```python
+from BudgetMe.Budget import Budget
+
+class B2022():
+
+    @staticmethod
+    def run() -> Budget:
+        budget = Budget(2022, daysof=2, start=10, end=12)
+        budget.addBank("Checking")
+        budget.days_labels = ["H1 (1)", "H2 (15)"]
+        budget.addAccount("Adjustments", days=[100, 0], category="Banking", bank="Checking", start=10)
+        budget.updateAccountsBalances()
+        return budget
+```
+
+The implementation in Flask:
+
+```python
+from flask import Flask
+from flask import render_template
+from BudgetMe.B2022 import B2022
+
+app = Flask(__name__)
+budget = B2022.run()
+
+@app.route('/balance')
+def balance_page():
+    return render_template('budget.html', balance=budget.getFinalBalance())
+```
+
 ### Unit Testing
 
 To run the tests and check the stability of the code, just run:
