@@ -46,6 +46,7 @@ class Account:
             self.transfer_balance = True
         else:
             self.transfer_balance = False
+        self.balance = 0
 
     def validate(self) -> bool:
         """
@@ -85,7 +86,7 @@ class Account:
                 "days": self.days, "category": self.category, "frequency": self.frequency, "start": self.start,
                 "bank": self.bank.asdict(), "periodical": self.periodical, "txn_mode": self.txn_mode,
                 "budget_start": self.budget_start, "budget_end": self.budget_end,
-                "parent": self.parent, "transfer_balance": self.transfer_balance}
+                "parent": self.parent, "transfer_balance": self.transfer_balance, "balance": self.balance}
 
     def init_single_month(self, month):
         self.init(range_start=month, range_end=month)
