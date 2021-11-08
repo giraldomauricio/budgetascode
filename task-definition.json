@@ -59,7 +59,7 @@
   ],
   "placementConstraints": [],
   "memory": "512",
-  "taskRoleArn": "arn:aws:iam::306034767610:role/ecsTaskExecutionRole"
+  "taskRoleArn": "arn:aws:iam::306034767610:role/ecsTaskExecutionRole",
   "family": "budgetascode",
   "pidMode": null,
   "requiresCompatibilities": [
